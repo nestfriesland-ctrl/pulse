@@ -40,15 +40,19 @@ Flow:
 
 ## Credentials
 
-Zie `config.env.example`. In Cowork worden deze als env vars gezet.
+Zie `config.env.example` — alle keys uit v1 geëxtraheerd.
 
-| Var | Wat | Rotatie |
-|-----|-----|---------|
-| TG_BOT_TOKEN | Telegram @mathijsdeluxebot | Permanent |
-| TG_CHAT_ID | Mathijs's private chat | Auto-detect |
-| HB_CLIENT_ID | Hyblock OAuth | Permanent |
-| HB_CLIENT_SECRET | Hyblock OAuth | Permanent |
-| HB_API_KEY | Hyblock x-api-key | Permanent |
+| Var | Wat | Status |
+|-----|-----|--------|
+| TG_BOT_TOKEN | Telegram @mathijsdeluxebot | ✅ actief |
+| TG_CHAT_ID | 562277869 (@Mathijs_EchtFit) | ✅ actief |
+| HB_CLIENT_ID | Hyblock OAuth | ✅ actief |
+| HB_CLIENT_SECRET | Hyblock OAuth | ✅ actief |
+| HB_API_KEY | Hyblock x-api-key | ✅ actief |
+| NANSEN_API_KEY | Smart money flows | 🔲 nog niet geïntegreerd |
+| COINGLASS_API_KEY | Onchain + macro (18 endpoints) | 🔲 nog niet geïntegreerd |
+| VERCEL_DEPLOY_SKYLD | Skyld portal deploy hook | 🔲 bewaard |
+| VERCEL_DEPLOY_NEST | NEST website deploy hook | 🔲 bewaard |
 
 ## Signal Logic
 
@@ -67,9 +71,44 @@ Na PROVEN status worden ze hier als alerting rules geïmplementeerd.
 | S4 Funding reversion | UNTESTED | — | — | — | — |
 | S5 OI cluster | UNTESTED | — | — | — | — |
 
+## v1 Analyse — wat is nuttig, wat niet
+
+Geëxtraheerd uit HANDOVER.md (15 maart 2026). Het oude systeem was ~18.800 regels
+Python over 25+ bestanden. Hier de triage:
+
+### ✅ Hergebruikt in v2
+- TG bot token + chat ID (562277869)
+- HTML dark luxury theme (report_renderer.py → lib/report.py)
+- Hyblock API kennis (veldnamen, endpoint mapping → lib/hyblock.py + hyblock skill)
+- Signal hypotheses S1-S5 (→ hyblock skill SIGNALS sectie)
+- Cascade paper findings (ATR% = #1 predictor, RFI concept)
+
+### 🔲 Nog te integreren (waardevol)
+- Nansen API (smart money flows) — key bewaard, client nog bouwen
+- CoinGlass API (18 endpoints, onchain + macro) — key bewaard, client nog bouwen
+- Kraken spot prijs + VWAP — vervangen door simpele API call
+- Regime classificatie (MOMENTUM/ACCUMULATIE/DISTRIBUTIE/CAPITULATIE/CHOP)
+- Cascade Risk Index (CRI 0-10, 5 componenten)
+- Virtual trades concept (setup → SL/TP → 7d outcome tracking)
+
+### ❌ Niet meer nodig
+- Qwen 72B lokaal (vervangen door Claude via Cowork)
+- Examinator (LLM-op-LLM review — het probleem dat v2 oplost)
+- core.py daemon loop (vervangen door Cowork scheduled tasks)
+- 25+ Python skill bestanden (vervangen door 3 clean modules)
+- Ollama integratie
+- Mac hardware dependency
+
+### 📋 Ideeën uit v1 roadmap (bewaard voor later)
+- Bayesiaans P(bull 24h) model (edge.py concept)
+- Thesis engine 4x/dag
+- Multi-coin swing scanner
+- OI cluster mapping als magneet-theorie
+
 ## Verwijzingen
 
 - hyblock skill: `nestfriesland-ctrl/hyblock-skill` (SKILL.md = levend document)
 - Dashboard: mathijs-os-report.vercel.app
-- Telegram bot: @mathijsdeluxebot
+- Telegram bot: @mathijsdeluxebot (chat ID: 562277869)
 - Archive v1: branch `archive/v1` in dit repo
+- v1 repo: `nestfriesland-ctrl/Mathijs-OS` (privé, op Mac)
