@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="nl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>MOS Report</title><style>
+:root{
+  --bg:#0a0c10;--sf:#12161e;--sf2:#181d28;--sf3:#1e2433;
+  --brd:#262d3d;--tx:#e4e7ec;--tx2:#b0b7c5;--txd:#636d80;
+  --grn:#34d399;--grn-bg:rgba(52,211,153,.08);
+  --red:#f87171;--red-bg:rgba(248,113,113,.08);
+  --amb:#fbbf24;--amb-bg:rgba(251,191,36,.08);
+  --blu:#60a5fa;--blu-bg:rgba(96,165,250,.06);
+  --m:'SF Mono','Fira Code','JetBrains Mono','Cascadia Code',monospace;
+  --s:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',system-ui,sans-serif
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{font-size:15px}
+body{background:var(--bg);color:var(--tx);font-family:var(--s);
+  line-height:1.55;padding:16px 14px 40px;max-width:540px;margin:0 auto;
+  -webkit-font-smoothing:antialiased}
+.hdr{padding:0 0 20px;border-bottom:1px solid var(--brd);margin-bottom:20px}
+.hdr-l{font-size:.68rem;font-weight:600;color:var(--txd);letter-spacing:.12em;text-transform:uppercase}
+.hdr-p{font-size:2.2rem;font-weight:700;font-family:var(--m);letter-spacing:-.03em;margin:4px 0 2px}
+.hdr-m{font-size:.74rem;color:var(--txd)}
+.c{background:var(--sf);border:1px solid var(--brd);border-radius:12px;padding:16px;margin-bottom:14px}
+.ct{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.ct h3{font-size:.68rem;font-weight:600;color:var(--txd);letter-spacing:.1em;text-transform:uppercase}
+.i{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;
+  border-radius:50%;border:1px solid var(--brd);background:var(--sf2);color:var(--txd);
+  font-size:.64rem;font-weight:700;font-style:italic;font-family:Georgia,serif;
+  cursor:pointer;flex-shrink:0;transition:all .15s;user-select:none;
+  -webkit-tap-highlight-color:transparent}
+.i:hover,.i.on{border-color:var(--blu);color:var(--blu);background:var(--blu-bg)}
+.ip{display:none;background:var(--sf3);border:1px solid var(--brd);border-radius:8px;
+  padding:11px 13px;margin:8px 0 4px;font-size:.76rem;line-height:1.65;color:var(--tx2)}
+.ip.show{display:block}
+.ph{display:flex;align-items:baseline;gap:8px;margin-bottom:12px}
+.ps{font-family:var(--m);font-size:.7rem;font-weight:700;letter-spacing:.06em;
+  padding:3px 8px;border-radius:4px}
+.ps.LONG{background:var(--grn-bg);color:var(--grn)}
+.ps.SHORT{background:var(--red-bg);color:var(--red)}
+.pc{font-size:1rem;font-weight:600}
+.pd{font-size:.76rem;color:var(--txd)}
+.pr{display:flex;align-items:baseline;gap:6px;margin:10px 0 14px}
+.pv{font-family:var(--m);font-size:1.6rem;font-weight:700}
+.pp{font-family:var(--m);font-size:.88rem;font-weight:600}
+.pg{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.px{background:var(--sf2);border-radius:6px;padding:8px 6px;text-align:center}
+.pl{font-size:.6rem;color:var(--txd);text-transform:uppercase;letter-spacing:.04em}
+.pn{font-family:var(--m);font-size:.84rem;font-weight:600;margin-top:2px}
+.rb{display:inline-block;font-family:var(--m);font-size:.78rem;font-weight:700;
+  letter-spacing:.06em;padding:5px 14px;border-radius:6px}
+.r-MOMENTUM{background:#0d3320;color:#34d399;border:1px solid #166534}
+.r-ACCUMULATIE{background:#0c2341;color:#60a5fa;border:1px solid #1e3a5f}
+.r-DISTRIBUTIE{background:#431a04;color:#fb923c;border:1px solid #7c2d12}
+.r-CAPITULATIE{background:#450a0a;color:#f87171;border:1px solid #7f1d1d}
+.r-CHOP{background:#362107;color:#fbbf24;border:1px solid #713f12}
+.r-UNKNOWN{background:#1a1d24;color:#636d80;border:1px solid var(--brd)}
+.sb{display:flex;align-items:center;margin-bottom:5px}
+.sl{width:26px;font-family:var(--m);font-size:.67rem;color:var(--txd);flex-shrink:0}
+.st{flex:1;height:5px;background:var(--sf3);border-radius:3px;overflow:hidden;margin:0 8px}
+.sf{height:100%;border-radius:3px}
+.sv{width:30px;text-align:right;font-family:var(--m);font-size:.74rem;flex-shrink:0}
+.mr{display:flex;align-items:center;justify-content:space-between;
+  padding:10px 12px;background:var(--sf2);border-radius:8px;margin-bottom:6px}
+.ml{display:flex;flex-direction:column;gap:1px}
+.mk{font-size:.66rem;color:var(--txd);text-transform:uppercase;letter-spacing:.04em}
+.mv{font-family:var(--m);font-size:1.05rem;font-weight:600}
+.mri{display:flex;align-items:center;gap:8px}
+.bm{display:flex;align-items:center;gap:16px;margin:6px 0 10px}
+.bn{font-family:var(--m);font-size:2rem;font-weight:700;min-width:70px}
+.bw{flex:1}
+.bl{font-size:.72rem;font-weight:600;margin-bottom:4px}
+.bt{height:8px;background:var(--sf3);border-radius:4px;overflow:hidden;position:relative}
+.bf{height:100%;border-radius:4px}
+.bmd{position:absolute;left:50%;top:-1px;width:1.5px;height:10px;background:var(--txd);opacity:.4}
+.cg{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
+.ci{background:var(--sf2);border-radius:6px;padding:8px 10px;
+  display:flex;align-items:center;justify-content:space-between}
+.cn{font-size:.68rem;color:var(--tx2);display:flex;align-items:center;gap:4px}
+.cs{font-family:var(--m);font-size:.8rem;font-weight:600}
+.su{background:var(--sf2);border-radius:8px;padding:14px;margin-top:8px;
+  white-space:pre-wrap;font-size:.8rem;line-height:1.65;color:var(--tx2)}
+.le{background:var(--sf2);border-left:3px solid var(--amb);padding:12px 14px;
+  border-radius:0 8px 8px 0;font-size:.8rem;line-height:1.6;color:var(--tx2)}
+.lm{font-size:.66rem;color:var(--txd);margin-top:6px}
+.ft{text-align:center;padding:24px 0;font-size:.66rem;color:var(--txd)}
+details summary{cursor:pointer;font-size:.72rem;color:var(--txd);padding:4px 0;user-select:none}
+details summary:hover{color:var(--tx2)}
+details[open] summary{margin-bottom:6px}
+</style></head>
+<body><div class="hdr"><div class="hdr-l">MATHIJS-OS · Morning Report</div><div class="hdr-p">$83,244</div><div class="hdr-m">Zondag 15 maart 2026 · 15:08 CET</div></div>
+<div class="c">
+<div class="ct"><h3>Positie</h3><span class="i" data-t="position">i</span><div class="ip" id="ip-position">Observe-only positie tracking — geen live executie. P&L op basis van Kraken spot prijs. SL/TP afstanden in % vanaf huidige prijs.</div></div>
+<div class="ph"><span class="ps LONG">LONG</span><span class="pc">1.0 BTC</span><span class="pd">@ $71,500</span></div>
+<div class="pr"><span class="pv" style="color:var(--grn)">+$11,744</span><span class="pp" style="color:var(--grn)">+16.4%</span></div>
+<div class="pg">
+<div class="px"><div class="pl">Entry</div><div class="pn">$71,500</div></div>
+<div class="px"><div class="pl">Huidig</div><div class="pn">$83,244</div></div>
+<div class="px"><div class="pl">Stop Loss</div><div class="pn" style="color:var(--red)">$69,800</div><div class="pl">16.2%</div></div>
+<div class="px"><div class="pl">Take Profit</div><div class="pn" style="color:var(--grn)">$76,000</div><div class="pl">8.7%</div></div>
+</div></div>
+<div class="c">
+<div class="ct"><h3>Regime</h3><span class="i" data-t="regime">i</span><div class="ip" id="ip-regime">S5 Regime — marktclassificatie op basis van S1-S4 hyblock signals. ACCUMULATIE: lage vol, zijwaarts, smart money koopt. MOMENTUM: stijgende OI, stabiele funding. DISTRIBUTIE: whales verkopen op highs. CAPITULATIE: extreme neg funding, OI flush. Bevestigd na 3 polls (45 min hysteresis) tegen whipsaw.</div></div>
+<span class="rb r-ACCUMULATIE">ACCUMULATIE</span>
+<div style="margin-top:14px">
+<div style="display:flex;align-items:center;gap:5px;margin-bottom:6px">
+<span style="font-size:.66rem;color:var(--txd)">Signalen</span><span class="i" data-t="s1">i</span><div class="ip" id="ip-s1">S1 Squeeze Pressure (0-10) — kans op short/long squeeze. Combineert funding rate, liquidatie levels, leverage concentratie. ≥ 7 triggert een sentinel alert met 6h cooldown.</div><span class="i" data-t="s3">i</span><div class="ip" id="ip-s3">S3 Smart Money Divergence (−10 tot +10) — whale vs retail positionering. Positief = whales meer long dan retail. Negatief = whales short terwijl retail long. Grote divergentie = spanning die ontladen wordt.</div><span class="i" data-t="s4">i</span><div class="ip" id="ip-s4">S4 Orderflow (−10 tot +10) — echte vs fake move. Combineert CVD, volume ratio, participation ratio. Positief = echte koopdruk. Negatief = verkoopdruk.</div>
+</div>
+<div class="sb"><span class="sl">S1</span><div class="st"><div class="sf" style="width:65%;background:var(--amb)"></div></div><span class="sv">+6.5</span></div><div class="sb"><span class="sl">S3</span><div class="st"><div class="sf" style="width:52%;background:var(--amb)"></div></div><span class="sv">-5.2</span></div><div class="sb"><span class="sl">S4</span><div class="st"><div class="sf" style="width:21%;background:var(--grn)"></div></div><span class="sv">-2.1</span></div>
+</div>
+<details><summary>S5 toelichting</summary><div class="su">Lage volatiliteit met stijgende OI en whale accumulatie. S1 toont moderate squeeze pressure (6.5/10). S3 negatief: whales verminderen long exposure terwijl retail bijkoopt. S4 licht negatief: orderflow momentum afnemend maar niet alarmerend. Klassiek accumulatie-patroon met verhoogd cascade risico door vol compressie.</div></details>
+</div>
+<div class="c">
+<div class="ct"><h3>Volatiliteit</h3><span style="font-size:.62rem;color:var(--txd)">Hyblock Cascade Paper</span></div>
+<div class="mr">
+<div class="ml"><div class="mk">ATR% (14h)</div>
+<div class="mv" style="color:var(--amb)">0.91% <span style="font-size:.7rem;color:var(--txd)">licht laag</span></div></div>
+<div class="mri"><span style="font-family:var(--m);font-size:.76rem;color:var(--txd)">$758</span><span class="i" data-t="atr_pct">i</span><div class="ip" id="ip-atr_pct">ATR% — Average True Range als percentage van prijs (14h lookback). Hyblock Paper: sterkste cascade-voorspeller (coëff −1.57, 3× sterker dan elke andere feature). Lage ATR% = volatiliteitscompressie = traders worden complacent, bouwen leverage op. Wanneer volatiliteit terugkeert is er meer 'brandstof' voor een cascade. &lt; 0.8% = verhoogd risico, &lt; 0.6% = extreem.</div></div>
+</div>
+<div class="mr">
+<div class="ml"><div class="mk">Parkinson vol (7d ann.)</div>
+<div class="mv">42%</div></div>
+<div class="mri"><span class="i" data-t="parkinson">i</span><div class="ip" id="ip-parkinson">Parkinson Volatility — range-based volatiliteitsschatter over 168h (7 dagen), geannualiseerd. Efficiënter dan close-to-close omdat het intra-candle high-low informatie gebruikt. Geeft een stabieler beeld van het volatiliteitsregime dan ATR% (dat sneller reageert).</div></div>
+</div>
+<div class="mr" style="border:1px solid rgba(248,113,113,.3);background:rgba(248,113,113,.06)"><div class="ml"><div class="mk">Regime Flag</div><div class="mv" style="color:var(--red)">⚠ LOW VOL REGIME</div></div><div class="mri"><span class="i" data-t="vol_regime">i</span><div class="ip" id="ip-vol_regime">Low Vol Regime Flag — actief als Parkinson vol &lt; 20e percentiel van de laatste 720 uur (30 dagen). Binary 'complacency detector': de markt zit in de laagste quintiel van z'n eigen recente volatiliteit. Hyblock Paper: positieve coëff (+0.18), bevestigt dat extreme volatiliteitscompressie cascade-risico verhoogt.</div></div></div></div>
+<div class="c">
+<div class="ct"><h3>Cascade Risk Index</h3><span class="i" data-t="cri">i</span><div class="ip" id="ip-cri">Cascade Risk Index — samengestelde score 0-10 gebaseerd op 5 componenten uit het Hyblock Cascade Paper (ROC-AUC 0.78, 3.7× lift). A) Volatiliteitscompressie (0-3pt), B) Leverage stress (0-2pt), C) OI-prijs divergentie (0-2pt), D) Liquidatie proximity (0-2pt), E) Funding crowding (0-1pt).</div></div>
+<div class="bm"><div class="bn" style="color:var(--red)">6.5</div>
+<div class="bw"><div class="bl" style="color:var(--red)">CRITICAL · dominant: volatiliteit</div>
+<div class="bt"><div class="bmd"></div><div class="bf" style="width:65%;background:var(--red)"></div></div></div></div>
+<div class="cg"><div class="ci"><span class="cn">Vol <span class="i" data-t="cri_a">i</span><div class="ip" id="ip-cri_a">Volatiliteitscompressie (0-3pt) — kern van het cascade-model. Paper: ATR% coëff −1.57. Lage vol = leverage buildup = meer posities dicht bij hun liquidatieprijs. De 'calm before the storm'.</div></span><span class="cs" style="color:var(--red)">2.0<span style="color:var(--txd);font-weight:400">/3</span></span></div><div class="ci"><span class="cn">Leverage <span class="i" data-t="cri_b">i</span><div class="ip" id="ip-cri_b">Leverage stress (0-2pt) — gebaseerd op S1 Squeeze Pressure en S4 orderflow. Paper: dalende leverage (RoC coëff −0.51) voorspelt cascades — deleveraging is al begonnen als het imminent is.</div></span><span class="cs" style="color:var(--red)">1.0<span style="color:var(--txd);font-weight:400">/2</span></span></div><div class="ci"><span class="cn">OI Div <span class="i" data-t="cri_c">i</span><div class="ip" id="ip-cri_c">OI-prijs divergentie (0-2pt) — |ΔOI%| − |ΔP%|. Wanneer open interest groeit maar prijs niet beweegt, bouwen traders tegengestelde posities op. Dit is 'potentiële energie' die zich via een cascade ontlaadt.</div></span><span class="cs" style="color:var(--red)">1.5<span style="color:var(--txd);font-weight:400">/2</span></span></div><div class="ci"><span class="cn">Liq Prox <span class="i" data-t="cri_d">i</span><div class="ip" id="ip-cri_d">Liquidatie proximity (0-2pt) — meet hoe dicht recente liquidatie-activiteit bij het 90e percentiel zit. Elevated liquidations beget further liquidations door het feedback-mechanisme.</div></span><span class="cs" style="color:var(--red)">1.0<span style="color:var(--txd);font-weight:400">/2</span></span></div><div class="ci"><span class="cn">Funding <span class="i" data-t="cri_e">i</span><div class="ip" id="ip-cri_e">Funding crowding (0-1pt) — cumulatieve funding rate over 24h. Paper: 2e sterkste feature (coëff +0.59). Persistente positieve funding = longs betalen steeds meer → margin erosie → dichter bij liquidatie.</div></span><span class="cs" style="color:var(--red)">1.0<span style="color:var(--txd);font-weight:400">/1</span></span></div></div></div>
+<div class="c">
+<div class="ct"><h3>Edge Engine · P(bull 24h)</h3><span class="i" data-t="edge">i</span><div class="ip" id="ip-edge">Edge Engine P(bullish 24h) — Bayesiaanse posterior probability dat BTC over 24 uur hoger staat. Beta-Binomial model met cross-entropy optimalisatie en L2 decay naar priors. BSS (Brier Skill Score) &gt; 0 = het model voorspelt beter dan de naive base rate.</div></div>
+<div class="bm"><div class="bn" style="color:var(--grn)">62%</div>
+<div class="bw"><div class="bl" style="color:var(--grn)">BULLISH</div>
+<div class="bt"><div class="bmd"></div><div class="bf" style="width:62%;background:var(--grn)"></div></div></div></div>
+<div style="font-size:.7rem;color:var(--txd);margin-top:2px">BSS +0.08 (edge) · 58% hit · n=47</div></div>
+<div class="c"><div class="ct"><h3>Setups van de dag</h3></div><div class="su">REGIME: ACCUMULATIE
+BTC consolideert in $82-85K range. Volatiliteit extreem laag (ATR% 0.91).
+Funding licht positief maar niet extreme. Whale/retail divergentie groeiend.
+
+SETUP 1: BTC LONG (schaalbaar)
+  Entry: $82,800 (huidige steun + 200 EMA 4h)
+  SL: $80,500 (3.5x ATR onder entry)
+  TP1: $86,200 (weerstand zone)
+  TP2: $89,000 (vorig ATH retest)
+  Positie: 15% portfolio (Quarter-Kelly)
+  Rationale: Low vol regime + SM accumulatie + OI rising = opbouw fase.
+  Risico: Macro event (FOMC woensdag). ATR% &lt; 1.0 = cascade alert actief.
+
+SETUP 2: ETH LONG (momentum)
+  Entry: $3,420 (boven 200 EMA 1h)
+  SL: $3,280
+  TP1: $3,650
+  Rationale: ETH/BTC ratio herstelt, spot CVD positief.
+
+Conclusie: Accumulatie regime bevestigd — schaalbare entries starten.
+Let op: CRI 6.5 (CRITICAL) door vol compressie. Kleinere posities dan normaal.</div></div>
+<div class="c"><div class="ct"><h3>Lesson van gisteren</h3></div><div class="le">Momentum setups in lage vol regime presteren ondermaats. Wacht op ATR% &gt; 1.5 voordat je breakout trades neemt. Vol compressie is de #1 cascade precursor (Hyblock paper coeff -1.57).<div class="lm">Hits: 3×</div></div></div>
+<div class="ft">MATHIJS-OS · observe only · geen beleggingsadvies</div>
+<script>document.addEventListener('click',function(e){
+var b=e.target.closest('.i');if(!b)return;e.stopPropagation();
+var id=b.dataset.t;if(!id)return;var p=document.getElementById('ip-'+id);if(!p)return;
+var o=p.classList.contains('show');
+document.querySelectorAll('.ip.show').forEach(function(x){x.classList.remove('show')});
+document.querySelectorAll('.i.on').forEach(function(x){x.classList.remove('on')});
+if(!o){p.classList.add('show');b.classList.add('on')}});</script></body></html>
