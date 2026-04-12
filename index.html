@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PULSE</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>◉</text></svg>">
+</head>
+<body>
+  <nav id="nav">
+    <div class="nav-brand">PULSE</div>
+    <div class="nav-links">
+      <a href="#dashboard" data-view="dashboard" class="active">Dashboard</a>
+      <a href="#graph" data-view="graph">Graph</a>
+    </div>
+  </nav>
+
+  <main id="app">
+    <div id="dashboard-view" class="view active">
+      <h1>Sensor Dashboard</h1>
+      <div id="sensor-grid" class="sensor-grid"></div>
+    </div>
+
+    <div id="graph-view" class="view">
+      <div id="graph-container"></div>
+    </div>
+
+    <div id="document-view" class="view">
+      <div id="breadcrumb"></div>
+      <div id="document-content"></div>
+      <div id="document-meta"></div>
+    </div>
+  </main>
+
+  <div class="tooltip" id="tooltip"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>
