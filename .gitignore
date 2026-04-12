@@ -1,5 +1,4 @@
-config.env
-.tg_config.json
-__pycache__/
-*.pyc
+node_modules/
+dist/
 .env
+.vercel
