@@ -4,7 +4,7 @@
 const API = '/api/wiki';
 let tree = null;
 let cache = {};
-const SENSORS = ['market', 'derivatives', 'nest-seo', 'infra', 'enrichment', 'anti-fragile'];
+const SENSORS = ['market', 'derivatives', 'watchlist', 'nest-seo', 'infra', 'enrichment', 'anti-fragile'];
 
 // --- API layer ---
 
@@ -166,6 +166,38 @@ function parseEnrichment(content) {
     complete: completeMatch ? completeMatch[1] : null,
     errors: errorMatch ? errorMatch[1] : null,
   };
+}
+
+function parseWatchlist(content) {
+  const assets = [];
+  // Match table data rows (skip header Asset row and separator ---)
+  const tableRe = /^\|\s*([A-Z]+)\s*\|\s*(\S+)\s*\|\s*([+-][0-9.]+%|—|-)\s*\|\s*(\S+)\s*\|\s*(\S+)\s*\|\s*([0-9,.\-]+|—|-)\s*\|/gm;
+  let m;
+  while ((m = tableRe.exec(content)) !== null) {
+    if (m[1] === 'Asset') continue; // skip header row
+    const deltaStr = m[3];
+    const deltaNum = parseFloat(deltaStr.replace('%', '').replace('+', ''));
+    assets.push({
+      asset: m[1],
+      price: m[2],
+      delta: deltaStr,
+      deltaNum: isNaN(deltaNum) ? 0 : deltaNum,
+      high: m[4],
+      low: m[5],
+      volume: m[6],
+    });
+  }
+
+  const signals = [];
+  const signalsMatch = content.match(/## Signalen\n([\s\S]*?)(?:\n##|$)/);
+  if (signalsMatch) {
+    for (const line of signalsMatch[1].split('\n')) {
+      const s = line.replace(/^-\s*/, '').trim();
+      if (s) signals.push(s);
+    }
+  }
+
+  return { assets, signals };
 }
 
 function parseAntiFrag(content) {
@@ -333,6 +365,40 @@ function renderEnrichmentCard(content) {
   `;
 }
 
+function renderWatchlistCard(content) {
+  const d = parseWatchlist(content);
+  if (!d.assets.length) return '<div class="card-waiting">Geen data</div>';
+
+  const rows = d.assets.map(a => {
+    const cls = a.deltaNum > 0 ? 'pos' : a.deltaNum < 0 ? 'neg' : '';
+    const hot = Math.abs(a.deltaNum) >= 5 ? ' wl-hot' : '';
+    return `<tr class="${hot.trim()}">
+      <td class="wl-asset">${a.asset}</td>
+      <td class="wl-price">${a.price}</td>
+      <td class="wl-delta ${cls}">${a.delta}</td>
+      <td class="wl-hl">${a.high}</td>
+      <td class="wl-hl">${a.low}</td>
+      <td class="wl-vol">${a.volume}</td>
+    </tr>`;
+  }).join('');
+
+  const signalsHtml = d.signals.length
+    ? `<div class="wl-signals">${d.signals.map(s => `<span class="wl-signal">${s}</span>`).join('')}</div>`
+    : '';
+
+  return `
+    <div class="wl-layout">
+      <table class="wl-table">
+        <thead><tr>
+          <th>Asset</th><th>Prijs</th><th>24h</th><th>High</th><th>Low</th><th>Vol</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      ${signalsHtml}
+    </div>
+  `;
+}
+
 function renderAntiFragCard(content) {
   const d = parseAntiFrag(content);
 
@@ -349,6 +415,7 @@ function renderAntiFragCard(content) {
 const RENDERERS = {
   'market': renderMarketCard,
   'derivatives': renderDerivativesCard,
+  'watchlist': renderWatchlistCard,
   'nest-seo': renderNestSeoCard,
   'infra': renderInfraCard,
   'enrichment': renderEnrichmentCard,
