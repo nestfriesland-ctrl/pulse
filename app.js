@@ -4,7 +4,7 @@
 const API = '/api/wiki';
 let tree = null;
 let cache = {};
-const SENSORS = ['market', 'derivatives', 'infra', 'nest-seo', 'enrichment', 'anti-fragile'];
+const SENSORS = ['market', 'derivatives', 'nest-seo', 'infra', 'enrichment', 'anti-fragile'];
 
 // --- API layer ---
 
@@ -27,14 +27,23 @@ async function fetchFile(path) {
   return content;
 }
 
-// --- Sensor parsing ---
+// --- Sensor meta parsing ---
 
 function parseSensorMeta(content) {
-  const meta = { lastUpdated: null, hoursAgo: null, status: 'unknown', preview: '' };
+  const meta = { lastUpdated: null, hoursAgo: null, status: 'unknown', notDeployed: false };
+
+  if (content.includes('NOT DEPLOYED')) {
+    meta.notDeployed = true;
+    return meta;
+  }
 
   const tsMatch = content.match(/last_updated:\s*(.+)/);
   if (tsMatch) {
     meta.lastUpdated = tsMatch[1].trim();
+    if (meta.lastUpdated === '—' || meta.lastUpdated === '-') {
+      meta.notDeployed = true;
+      return meta;
+    }
     try {
       const dt = new Date(meta.lastUpdated);
       if (!isNaN(dt.getTime())) {
@@ -47,12 +56,304 @@ function parseSensorMeta(content) {
     meta.status = meta.hoursAgo < 4 ? 'fresh' : meta.hoursAgo < 12 ? 'stale' : 'down';
   }
 
-  const lines = content.split('\n')
-    .filter(l => l.trim() && !l.startsWith('#') && !l.startsWith('>') && !l.startsWith('---'));
-  meta.preview = lines.slice(0, 4).join('\n');
-
   return meta;
 }
+
+// --- Sensor-specific parsers ---
+
+function stripTags(s) {
+  return s ? s.replace(/\s*\[[A-Z]+\]/g, '').trim() : s;
+}
+
+function colorClass(val) {
+  if (!val) return '';
+  return val.startsWith('-') ? 'neg' : 'pos';
+}
+
+function parseMarket(content) {
+  const btcMatch = content.match(/BTC:\s*\$([0-9,]+)\s*\|\s*24h:\s*([+-][0-9.]+%)/);
+  const ethMatch = content.match(/ETH:\s*\$([0-9,]+)\s*\|\s*24h:\s*([+-][0-9.]+%)/);
+  const btcAthMatch = content.match(/BTC:.*?ATH[^|]*\|\s*(-[0-9.]+%)\s*van top/);
+  const ethAthMatch = content.match(/ETH:.*?ATH[^|]*\|\s*(-[0-9.]+%)\s*van top/);
+  const macroMatch = content.match(/Macro:\s*(.+)/);
+
+  return {
+    btcPrice: btcMatch ? btcMatch[1] : null,
+    btc24h: btcMatch ? btcMatch[2] : null,
+    ethPrice: ethMatch ? ethMatch[1] : null,
+    eth24h: ethMatch ? ethMatch[2] : null,
+    btcAthDist: btcAthMatch ? btcAthMatch[1] : null,
+    ethAthDist: ethAthMatch ? ethAthMatch[1] : null,
+    macro: macroMatch ? stripTags(macroMatch[1]) : null,
+  };
+}
+
+function parseInfra(content) {
+  const sitesMatch = content.match(/SITES:\s*(.+)/m);
+  const deploysMatch = content.match(/DEPLOYS:\s*(.+)/m);
+  const gitMatch = content.match(/GIT:\s*(.+)/m);
+  const bridgeMatch = content.match(/M4-BRIDGE:\s*(.+)/m);
+
+  const sites = [];
+  if (sitesMatch) {
+    for (const part of stripTags(sitesMatch[1]).split('|')) {
+      const m = part.trim().match(/^(\S+)\s+(\d{3})$/);
+      if (m) sites.push({ name: m[1], code: parseInt(m[2]) });
+    }
+  }
+
+  const deploys = [];
+  if (deploysMatch) {
+    for (const part of stripTags(deploysMatch[1]).split('|')) {
+      const m = part.trim().match(/^(\S+)\s+(\w+)$/);
+      if (m) deploys.push({ name: m[1], status: m[2] });
+    }
+  }
+
+  return {
+    sites,
+    deploys,
+    git: gitMatch ? stripTags(gitMatch[1]) : null,
+    bridge: bridgeMatch ? stripTags(bridgeMatch[1]) : null,
+  };
+}
+
+function parseNestSeo(content) {
+  const drMatch = content.match(/DR:\s*([0-9.]+)/);
+  const refMatch = content.match(/Ref domains:\s*(\d+)\s*live/);
+  const blMatch = content.match(/Backlinks:\s*(\d+)\s*live/);
+  const trendMatch = content.match(/Trend:\s*(.+)/);
+
+  const backlinkRows = [];
+  const re = /^([^\s|]+)\s*\|\s*DR(\d+)\s*\|\s*(\d+)\s*dofollow\s*\|\s*([^\[]+)/gm;
+  let m;
+  while ((m = re.exec(content)) !== null) {
+    backlinkRows.push({ domain: m[1], dr: m[2], count: m[3], date: m[4].trim() });
+  }
+
+  return {
+    dr: drMatch ? drMatch[1] : null,
+    refDomains: refMatch ? refMatch[1] : null,
+    backlinks: blMatch ? blMatch[1] : null,
+    backlinkRows: backlinkRows.slice(0, 5),
+    trend: trendMatch ? stripTags(trendMatch[1]) : null,
+  };
+}
+
+function parseDerivatives(content) {
+  const regimeMatch = content.match(/Regime[:\s]+(\w+)/i);
+  const frMatch = content.match(/^FR[:\s]+(.+)/im);
+  const oiMatch = content.match(/^OI[:\s]+(.+)/im);
+  const barMatch = content.match(/^BAR[:\s]+(.+)/im);
+  const cascadeMatch = content.match(/[Cc]ascade[^:]*:\s*(.+)/);
+
+  return {
+    regime: regimeMatch ? regimeMatch[1].trim() : null,
+    fr: frMatch ? stripTags(frMatch[1]) : null,
+    oi: oiMatch ? stripTags(oiMatch[1]) : null,
+    bar: barMatch ? stripTags(barMatch[1]) : null,
+    cascade: cascadeMatch ? stripTags(cascadeMatch[1]) : null,
+  };
+}
+
+function parseEnrichment(content) {
+  const pendingMatch = content.match(/[Pp]ending[:\s]+(\d+)/);
+  const completeMatch = content.match(/[Cc]omplete[:\s]+(\d+)/);
+  const errorMatch = content.match(/[Ee]rrors?[:\s]+(\d+)/);
+
+  return {
+    pending: pendingMatch ? pendingMatch[1] : null,
+    complete: completeMatch ? completeMatch[1] : null,
+    errors: errorMatch ? errorMatch[1] : null,
+  };
+}
+
+function parseAntiFrag(content) {
+  const cycleMatch = content.match(/[Cc]ycle[:\s#*]+([^\n]+)/);
+  const hypothesisMatch = content.match(/[Hh]ypothes[ie]s[:\s]+([^\n]+)/);
+  const statusMatch = content.match(/[Ss]tatus[:\s]+([^\n]+)/);
+  const edgesMatch = content.match(/[Ee]dges?[:\s]+([^\n]+)/);
+
+  return {
+    cycle: cycleMatch ? cycleMatch[1].trim() : null,
+    hypothesis: hypothesisMatch ? hypothesisMatch[1].trim() : null,
+    status: statusMatch ? statusMatch[1].trim() : null,
+    edges: edgesMatch ? edgesMatch[1].trim() : null,
+  };
+}
+
+// --- Card renderers ---
+
+function renderMarketCard(content) {
+  const d = parseMarket(content);
+  if (!d.btcPrice) return '<div class="card-waiting">Geen data</div>';
+
+  return `
+    <div class="market-primary">
+      <div class="market-main">
+        <div class="market-ticker">BTC</div>
+        <div class="market-price">$${d.btcPrice}</div>
+        <div class="market-change ${colorClass(d.btc24h)}">${d.btc24h}</div>
+      </div>
+      ${d.btcAthDist ? `<div class="market-ath-block">
+        <div class="ath-label">van ATH</div>
+        <div class="ath-value ${colorClass(d.btcAthDist)}">${d.btcAthDist}</div>
+      </div>` : ''}
+    </div>
+    <div class="market-divider"></div>
+    <div class="market-alt">
+      ${d.ethPrice ? `<div class="market-alt-row">
+        <span class="alt-ticker">ETH</span>
+        <span class="alt-price">$${d.ethPrice}</span>
+        <span class="alt-change ${colorClass(d.eth24h)}">${d.eth24h}</span>
+        ${d.ethAthDist ? `<span class="alt-ath ${colorClass(d.ethAthDist)}">${d.ethAthDist}</span>` : ''}
+      </div>` : ''}
+    </div>
+    ${d.macro ? `<div class="market-macro">${d.macro}</div>` : ''}
+  `;
+}
+
+function renderDerivativesCard(content) {
+  const d = parseDerivatives(content);
+
+  const regimeClass = d.regime === 'UP' ? 'regime-up'
+    : d.regime === 'DOWN' ? 'regime-down'
+    : d.regime ? 'regime-sideways'
+    : 'regime-unknown';
+
+  return `
+    <div class="deriv-primary">
+      <span class="regime-badge ${regimeClass}">${d.regime || '—'}</span>
+    </div>
+    <div class="deriv-stats">
+      ${d.fr ? `<div class="deriv-stat"><div class="deriv-label">FR</div><div class="deriv-value">${d.fr}</div></div>` : ''}
+      ${d.oi ? `<div class="deriv-stat"><div class="deriv-label">OI</div><div class="deriv-value">${d.oi}</div></div>` : ''}
+      ${d.bar ? `<div class="deriv-stat"><div class="deriv-label">BAR</div><div class="deriv-value">${d.bar}</div></div>` : ''}
+      ${d.cascade ? `<div class="deriv-stat"><div class="deriv-label">CASCADE</div><div class="deriv-value">${d.cascade}</div></div>` : ''}
+    </div>
+  `;
+}
+
+function renderNestSeoCard(content) {
+  const d = parseNestSeo(content);
+
+  const tableRows = d.backlinkRows.map(row => {
+    const drNum = parseInt(row.dr);
+    const drClass = drNum >= 70 ? 'dr-high' : drNum >= 30 ? 'dr-mid' : 'dr-low';
+    return `<tr>
+      <td class="bl-domain">${row.domain}</td>
+      <td class="bl-dr ${drClass}">${row.dr}</td>
+      <td class="bl-count">${row.count}</td>
+      <td class="bl-date">${row.date}</td>
+    </tr>`;
+  }).join('');
+
+  return `
+    <div class="seo-layout">
+      <div class="seo-left">
+        <div class="seo-dr-block">
+          <div class="seo-dr-value">${d.dr || '—'}</div>
+          <div class="seo-dr-label">Domain Rating</div>
+        </div>
+        <div class="seo-kpis">
+          <div class="seo-kpi">
+            <div class="seo-kpi-value">${d.refDomains || '—'}</div>
+            <div class="seo-kpi-label">ref domains</div>
+          </div>
+          <div class="seo-kpi">
+            <div class="seo-kpi-value">${d.backlinks || '—'}</div>
+            <div class="seo-kpi-label">backlinks</div>
+          </div>
+        </div>
+        ${d.trend ? `<div class="seo-trend">${d.trend}</div>` : ''}
+      </div>
+      ${tableRows ? `<div class="seo-right">
+        <div class="seo-table-label">Nieuwe backlinks (7d)</div>
+        <table class="seo-table">
+          <thead><tr><th>Domain</th><th>DR</th><th>#</th><th>Datum</th></tr></thead>
+          <tbody>${tableRows}</tbody>
+        </table>
+      </div>` : ''}
+    </div>
+  `;
+}
+
+function renderInfraCard(content) {
+  const d = parseInfra(content);
+
+  const sitesDots = d.sites.map(s => {
+    const ok = s.code >= 200 && s.code < 400;
+    return `<div class="dot-row">
+      <span class="dot ${ok ? 'dot-green' : 'dot-red'}"></span>
+      <span class="dot-name">${s.name}</span>
+      <span class="dot-code">${s.code}</span>
+    </div>`;
+  }).join('');
+
+  const deployDots = d.deploys.map(dep => {
+    const ok = dep.status === 'READY';
+    return `<div class="dot-row">
+      <span class="dot ${ok ? 'dot-green' : 'dot-red'}"></span>
+      <span class="dot-name">${dep.name}</span>
+    </div>`;
+  }).join('');
+
+  return `
+    ${sitesDots ? `<div class="infra-section">
+      <div class="infra-label">SITES</div>
+      <div class="infra-dots">${sitesDots}</div>
+    </div>` : ''}
+    ${deployDots ? `<div class="infra-section">
+      <div class="infra-label">DEPLOYS</div>
+      <div class="infra-dots">${deployDots}</div>
+    </div>` : ''}
+    ${d.git ? `<div class="infra-meta"><span class="infra-meta-key">GIT</span> ${d.git}</div>` : ''}
+    ${d.bridge ? `<div class="infra-meta"><span class="infra-meta-key">BRIDGE</span> ${d.bridge}</div>` : ''}
+  `;
+}
+
+function renderEnrichmentCard(content) {
+  const d = parseEnrichment(content);
+
+  return `
+    <div class="enrichment-counts">
+      <div class="e-count">
+        <div class="e-value yellow">${d.pending || '—'}</div>
+        <div class="e-label">pending</div>
+      </div>
+      <div class="e-count">
+        <div class="e-value green">${d.complete || '—'}</div>
+        <div class="e-label">complete</div>
+      </div>
+      <div class="e-count">
+        <div class="e-value red">${d.errors || '—'}</div>
+        <div class="e-label">errors</div>
+      </div>
+    </div>
+  `;
+}
+
+function renderAntiFragCard(content) {
+  const d = parseAntiFrag(content);
+
+  return `
+    <div class="af-content">
+      ${d.cycle ? `<div class="af-cycle">Cycle ${d.cycle}</div>` : ''}
+      ${d.hypothesis ? `<div class="af-hypothesis">${d.hypothesis}</div>` : ''}
+      ${d.status ? `<div class="af-status">${d.status}</div>` : ''}
+      ${d.edges ? `<div class="af-edges">Edges: ${d.edges}</div>` : ''}
+    </div>
+  `;
+}
+
+const RENDERERS = {
+  'market': renderMarketCard,
+  'derivatives': renderDerivativesCard,
+  'nest-seo': renderNestSeoCard,
+  'infra': renderInfraCard,
+  'enrichment': renderEnrichmentCard,
+  'anti-fragile': renderAntiFragCard,
+};
 
 // --- Dashboard ---
 
@@ -62,41 +363,45 @@ async function renderDashboard() {
     <div class="sensor-card" data-sensor="${name}">
       <div class="sensor-header">
         <span class="sensor-name">${name}</span>
-        <span class="sensor-badge badge-down" id="badge-${name}">...</span>
+        <span class="sensor-badge badge-down" id="badge-${name}">…</span>
       </div>
-      <div class="sensor-time" id="time-${name}">loading...</div>
-      <div class="sensor-preview" id="preview-${name}"></div>
+      <div class="sensor-body" id="body-${name}"><div class="loading-text">laden…</div></div>
     </div>
   `).join('');
 
-  // Click handlers
   grid.querySelectorAll('.sensor-card').forEach(card => {
     card.addEventListener('click', () => navigate(`doc/sensors/${card.dataset.sensor}.md`));
   });
 
-  // Load sensor data in parallel
   await Promise.allSettled(SENSORS.map(async name => {
     try {
       const content = await fetchFile(`sensors/${name}.md`);
       const meta = parseSensorMeta(content);
-
       const badge = document.getElementById(`badge-${name}`);
-      const time = document.getElementById(`time-${name}`);
-      const preview = document.getElementById(`preview-${name}`);
+      const body = document.getElementById(`body-${name}`);
+
+      if (meta.notDeployed) {
+        badge.textContent = '–';
+        badge.className = 'sensor-badge badge-pending';
+        body.innerHTML = '<div class="card-waiting">Wacht op data</div>';
+        return;
+      }
 
       if (meta.hoursAgo !== null) {
         badge.textContent = `${meta.hoursAgo}h`;
         badge.className = `sensor-badge badge-${meta.status}`;
       } else {
-        badge.textContent = 'TODO';
+        badge.textContent = 'ERR';
         badge.className = 'sensor-badge badge-down';
       }
-      time.textContent = meta.lastUpdated || 'no data yet';
-      preview.textContent = meta.preview || 'awaiting first sensor run';
+
+      const renderer = RENDERERS[name];
+      if (renderer) body.innerHTML = renderer(content, meta);
     } catch (e) {
-      document.getElementById(`badge-${name}`).textContent = 'ERR';
-      document.getElementById(`badge-${name}`).className = 'sensor-badge badge-down';
-      document.getElementById(`time-${name}`).textContent = 'failed to load';
+      const badge = document.getElementById(`badge-${name}`);
+      const body = document.getElementById(`body-${name}`);
+      if (badge) { badge.textContent = 'ERR'; badge.className = 'sensor-badge badge-down'; }
+      if (body) body.innerHTML = '<div class="card-waiting">Laad fout</div>';
     }
   }));
 }
@@ -108,9 +413,7 @@ async function renderDocument(path) {
   const parts = path.split('/');
   bc.innerHTML = '<a href="#dashboard">dashboard</a> / ' +
     parts.map((p, i) => {
-      if (i < parts.length - 1) {
-        return `<span>${p}</span>`;
-      }
+      if (i < parts.length - 1) return `<span>${p}</span>`;
       return `<strong style="color:var(--text)">${p}</strong>`;
     }).join(' / ');
 
@@ -121,7 +424,6 @@ async function renderDocument(path) {
     const content = await fetchFile(path);
     contentEl.innerHTML = marked.parse(content);
 
-    // Intercept internal .md links
     contentEl.querySelectorAll('a[href]').forEach(a => {
       const href = a.getAttribute('href');
       if (href && !href.startsWith('http') && href.endsWith('.md')) {
@@ -153,7 +455,6 @@ async function renderGraph() {
   const width = container.clientWidth;
   const height = container.clientHeight || window.innerHeight - 60;
 
-  // Build nodes
   const inLinks = {};
   const nodes = tree.map(f => {
     inLinks[f.path] = 0;
@@ -165,7 +466,6 @@ async function renderGraph() {
   });
   const nodeSet = new Set(nodes.map(n => n.id));
 
-  // Parse links from cached content
   const links = [];
   const seen = new Set();
   for (const [filePath, content] of Object.entries(cache)) {
@@ -286,7 +586,6 @@ function handleRoute() {
   }
 }
 
-// Nav links
 document.querySelectorAll('.nav-links a').forEach(a => {
   a.addEventListener('click', e => {
     e.preventDefault();
@@ -308,7 +607,6 @@ async function init() {
       '<p class="loading">Failed to connect to wiki API. Check GITHUB_PAT env var.</p>';
   }
 
-  // Auto-refresh every 5 minutes
   setInterval(async () => {
     cache = {};
     tree = null;
