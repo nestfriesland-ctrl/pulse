@@ -16,6 +16,7 @@ Real-time status van alle domeinen via `wiki/sensors/`:
 - market — prijzen, volumes, macro
 - infra — sites, deploys, git
 - nest-seo — DR, backlinks, rankings
+- enrichment — ctrl-engine pipeline
 - anti-fragile — research cycles, edges
 
 ## Deploy
