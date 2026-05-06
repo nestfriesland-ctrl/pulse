@@ -330,6 +330,88 @@ window.PulseUtil = (function () {
   };
 })();
 
+// --- Katern map (sensor → katern) ---------------------------------------
+//
+// Vijf katernen organiseren sensors semantisch (niet per project). Geo-politiek
+// register werkt over project-grenzen heen — confluence en anti-fragile leven
+// beide in MARKT en kunnen op dezelfde data-snapshot tegengesteld lezen.
+//
+// LICHAAM heeft ruimte gereserveerd voor cortex (Whoop) maar de sensor staat
+// op KANDIDAAT-VERWIJDERING en wordt op het dashboard niet gerendered;
+// katern-pagina laat dat expliciet zien.
+//
+// RESIDU + NECROLOGIE worden bevolkt in PR #7 (observer-residue) en PR #8
+// (necrologie-seed).
+
+const KATERN_DEFS = {
+  markt: {
+    label: 'Markt',
+    tagline: 'crypto · macro · positie',
+    sensors: ['market', 'fear-greed', 'thesis-trader', 'confluence', 'macro-regime', 'anti-fragile', 'watchlist', 'ma200', 'ta-setups', 'backtest'],
+    viz: 'markt',
+  },
+  machinekamer: {
+    label: 'Machinekamer',
+    tagline: 'fabriek · pipeline · uptime',
+    sensors: ['infra', 'enrichment', 'machinekamer', 'nest-seo'],
+    viz: 'machinekamer',
+  },
+  lichaam: {
+    label: 'Lichaam',
+    tagline: 'fysiologie · regime · herstel',
+    sensors: ['cortex'],
+    viz: null,
+  },
+  residu: {
+    label: 'Residu',
+    tagline: 'meta · onverklaard · drift',
+    sensors: ['observer-residue'],
+    viz: null,
+  },
+  necrologie: {
+    label: 'Necrologie',
+    tagline: 'gefalsifieerd · begraven · ritueel',
+    sensors: [],
+    viz: null,
+  },
+};
+
+const KATERN_MAP = {};
+for (const [katernName, def] of Object.entries(KATERN_DEFS)) {
+  for (const s of def.sensors) KATERN_MAP[s] = katernName;
+}
+
+// --- Tijd-delta (per-katern last-view in localStorage) -------------------
+//
+// Mechaniek: bij elk bezoek aan een katern-pagina lezen we de vorige
+// last-view-timestamp en taggen tiles waar sensor.updated_at > vorige bezoek
+// met `verschoven sinds u laatst keek`. Daarna pas overschrijven we de
+// timestamp. Bij eerste-bezoek (geen waarde): geen kickers, alleen
+// inschrijving. N=1, dus puur localStorage.
+
+const TIJD_DELTA_KEY = 'pulse_last_view';
+
+function getKaternLastView(katern) {
+  try {
+    const raw = localStorage.getItem(TIJD_DELTA_KEY);
+    if (!raw) return null;
+    const map = JSON.parse(raw);
+    return (map && map[katern]) || null;
+  } catch (e) { return null; }
+}
+
+function recordKaternView(katern) {
+  try {
+    let map = {};
+    const raw = localStorage.getItem(TIJD_DELTA_KEY);
+    if (raw) {
+      try { map = JSON.parse(raw) || {}; } catch (e) { map = {}; }
+    }
+    map[katern] = new Date().toISOString();
+    localStorage.setItem(TIJD_DELTA_KEY, JSON.stringify(map));
+  } catch (e) { /* localStorage disabled — fail silent */ }
+}
+
 // --- Editorial dashboard dispatcher --------------------------------------
 
 const STRIP_NAMES = ['enrichment', 'infra', 'nest-seo', 'backtest', 'machinekamer'];
@@ -460,6 +542,52 @@ async function renderDashboard() {
     window.PulseCharts.initBtcChart('btc-chart');
     window.PulseCharts.initEthBtcRatio('ethbtc-sparkline');
   }
+}
+
+// --- Katern-pagina renderer ----------------------------------------------
+//
+// Routing is hash-based. Drie lagen:
+//   #dashboard           = bestaande krant-flow (ongewijzigd)
+//   #<katern>            = katern-voorpagina (markt/machinekamer/lichaam/residu/necrologie)
+//   #<katern>/<sensor>   = sensor-deep (toont volledige sensor-md, hergebruikt document-view)
+//
+// Tijd-delta wordt berekend tegen de last-view BEFORE we recorden — daarna
+// pas overschrijven, anders is verschoven altijd false.
+
+async function renderKatern(katernName) {
+  const def = KATERN_DEFS[katernName];
+  const view = document.getElementById('katern-view');
+  if (!def || !view) return;
+
+  const lastView = getKaternLastView(katernName);
+
+  await Promise.all([fetchSensorListing(), fetchRegistry()]);
+  // Filter visible sensors. cortex / KANDIDAAT-VERWIJDERING worden door
+  // shouldDisplay gefilterd zodat lichaam-katern de empty-state toont.
+  const visible = def.sensors.filter(s => shouldDisplay(s));
+
+  const contents = {};
+  await Promise.allSettled(visible.map(async name => {
+    try { contents[name] = await fetchFile(`sensors/${name}.md`); }
+    catch (e) { /* leave blank */ }
+  }));
+
+  if (window.PulseKatern) {
+    window.PulseKatern.render({
+      view,
+      katernName,
+      def,
+      sensors: visible,
+      contents,
+      lastView,
+      parseSensorMeta,
+      parseRegime,
+      parseKrant,
+    });
+  }
+
+  // Record AFTER render zodat verschoven-flag de vorige-bezoek-timestamp gebruikt.
+  recordKaternView(katernName);
 }
 
 // --- Live layer (Kraken 15s) --------------------------------------------
@@ -726,15 +854,45 @@ function handleRoute() {
 
   if (hash === 'dashboard') {
     document.getElementById('dashboard-view').classList.add('active');
-    document.querySelector('[data-view="dashboard"]').classList.add('active');
-  } else if (hash === 'graph') {
+    const link = document.querySelector('[data-view="dashboard"]');
+    if (link) link.classList.add('active');
+    return;
+  }
+  if (hash === 'graph') {
     document.getElementById('graph-view').classList.add('active');
-    document.querySelector('[data-view="graph"]').classList.add('active');
+    const link = document.querySelector('[data-view="graph"]');
+    if (link) link.classList.add('active');
     renderGraph();
-  } else if (hash.startsWith('doc/')) {
+    return;
+  }
+  if (hash.startsWith('doc/')) {
     document.getElementById('document-view').classList.add('active');
     renderDocument(hash.slice(4));
+    return;
   }
+  // Katern routes: #<katern> en #<katern>/<sensor>
+  const katernMatch = hash.match(/^([a-z]+)(?:\/([a-z0-9\-]+))?$/);
+  if (katernMatch) {
+    const [, katern, sensor] = katernMatch;
+    if (KATERN_DEFS[katern]) {
+      if (sensor) {
+        // Laag 3 — sensor-deep. Tot getrapt-paradigma gemigreerd is (wacht
+        // op NEMESIS A/B ≥55%) toont deze view de huidige sensor-md direct
+        // via document-view.
+        document.getElementById('document-view').classList.add('active');
+        renderDocument(`sensors/${sensor}.md`);
+      } else {
+        // Laag 2 — katern-voorpagina.
+        document.getElementById('katern-view').classList.add('active');
+        const link = document.querySelector(`[data-view="${katern}"]`);
+        if (link) link.classList.add('active');
+        renderKatern(katern);
+      }
+      return;
+    }
+  }
+  // Onbekende hash — terug naar dashboard.
+  document.getElementById('dashboard-view').classList.add('active');
 }
 
 document.querySelectorAll('.nav-links a').forEach(a => {

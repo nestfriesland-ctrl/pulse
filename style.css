@@ -839,6 +839,213 @@ footer.editorial {
   text-align: center;
 }
 
+/* ─── KATERN-PAGINA (PR #5) ──────────────────────────────────────── */
+/* Hergebruikt bestaande typografie (.kicker, .deck, .lead h1, .meta-row).
+ * Nieuwe klassen alleen voor katern-page-grid + per-katern viz-blokken. */
+
+.katern-page { padding: 28px 0 60px; }
+
+.katern-header {
+  border-bottom: 1px solid var(--ink);
+  padding-bottom: 14px;
+  margin-bottom: 24px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: end;
+  gap: 24px;
+}
+.katern-header .back-link {
+  font-family: var(--sans);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--ink-mute);
+  text-decoration: none;
+  align-self: end;
+  padding-bottom: 6px;
+}
+.katern-header .back-link:hover { color: var(--ink); }
+.katern-header h1 {
+  font-family: var(--display);
+  font-weight: 900;
+  font-size: 56px;
+  line-height: 0.9;
+  letter-spacing: -0.03em;
+  margin: 0;
+  font-variation-settings: 'opsz' 144;
+}
+.katern-header .tagline {
+  font-family: var(--sans);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--ink-mute);
+  text-align: right;
+  padding-bottom: 6px;
+}
+
+.katern-viz {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  border-bottom: 1px solid var(--paper-rule);
+  padding-bottom: 24px;
+  margin-bottom: 24px;
+}
+.katern-viz .viz-block { min-width: 0; }
+.katern-viz .viz-label {
+  font-family: var(--sans);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--ink-mute);
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--paper-rule);
+  padding-bottom: 4px;
+}
+
+/* Tile-grid: drie-koloms tot 1100px, twee tot 700px, één daaronder. */
+.tile-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+.tile {
+  border-top: 1px solid var(--paper-rule);
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+}
+.tile h2 {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 22px;
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+  margin: 4px 0 10px;
+}
+.tile .deck {
+  font-family: var(--serif);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink-soft);
+  font-style: italic;
+  margin: 0 0 12px;
+  flex: 1;
+}
+.tile-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-top: 1px solid var(--paper-rule);
+  padding-top: 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-mute);
+}
+.tile-foot .deep-link {
+  text-decoration: none;
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+}
+.tile-foot .deep-link:hover { text-decoration: underline; }
+
+.tijd-delta-kicker {
+  font-family: var(--sans);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--bear);
+  font-weight: 600;
+  border-left: 2px solid var(--bear);
+  padding-left: 8px;
+  margin-bottom: 8px;
+}
+
+.tile.fresh-down .kicker::after,
+.tile.fresh-stale .kicker::after {
+  content: ' · stale';
+  color: var(--warn);
+  font-weight: 400;
+}
+
+.katern-empty {
+  border: 1px dashed var(--paper-rule);
+  padding: 48px 32px;
+  text-align: center;
+  color: var(--ink-soft);
+}
+.katern-empty h3 {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 22px;
+  margin: 0 0 8px;
+}
+.katern-empty p {
+  font-family: var(--serif);
+  font-size: 14px;
+  margin: 0;
+}
+
+/* Uptime-strip (machinekamer-katern) */
+.uptime-strip-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.uptime-row {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 12px;
+  align-items: center;
+}
+.uptime-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+.uptime-blocks {
+  display: grid;
+  grid-template-columns: repeat(30, 1fr);
+  gap: 2px;
+  height: 14px;
+}
+.uptime-blocks .block { background: rgba(22,20,15,0.06); }
+.uptime-blocks .block.fresh { background: var(--bull); opacity: 0.75; }
+.uptime-blocks .block.stale { background: rgba(22,20,15,0.06); }
+.uptime-loading {
+  font-family: var(--sans);
+  font-size: 10px;
+  color: var(--ink-mute);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+}
+
+/* Watchlist sparkline-grid (markt-katern) */
+.watchlist-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 12px;
+}
+.watchlist-item {
+  border-top: 1px solid var(--paper-rule);
+  padding-top: 6px;
+}
+.watchlist-name {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: -0.01em;
+  margin-bottom: 4px;
+}
+.watchlist-spark {
+  height: 40px;
+  width: 100%;
+}
+
 /* ─── MOBILE ────────────────────────────────────────────────────── */
 @media (max-width: 1100px) {
   .lead { grid-template-columns: 1fr; }
@@ -853,6 +1060,11 @@ footer.editorial {
   .triple article, .duo article { padding: 18px 0; border-bottom: 1px solid var(--paper-rule); }
   .strip { grid-template-columns: repeat(2, 1fr); }
   .heat-grid { grid-template-columns: 1fr; gap: 18px; }
+  .tile-grid { grid-template-columns: repeat(2, 1fr); }
+  .katern-viz { grid-template-columns: 1fr; }
+  .watchlist-grid { grid-template-columns: repeat(4, 1fr); }
+  .katern-header { grid-template-columns: 1fr; gap: 8px; }
+  .katern-header .tagline { text-align: left; padding-bottom: 0; }
 }
 
 @media (max-width: 700px) {
@@ -866,4 +1078,8 @@ footer.editorial {
   .strip { grid-template-columns: 1fr; }
   .strip .item { border-left: none; padding-left: 0; border-top: 1px solid var(--paper-rule); padding-top: 8px; }
   .strip .item:first-child { border-top: none; padding-top: 0; }
+  .tile-grid { grid-template-columns: 1fr; }
+  .watchlist-grid { grid-template-columns: repeat(2, 1fr); }
+  .katern-header h1 { font-size: 40px; }
+  .uptime-row { grid-template-columns: 80px 1fr; }
 }
