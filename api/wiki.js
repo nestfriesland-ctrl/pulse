@@ -16,6 +16,8 @@ export default async function handler(req, res) {
     let url;
     if (path === '_tree') {
       url = `${baseUrl}/git/trees/main?recursive=1`;
+    } else if (path === '_sensors') {
+      url = `${baseUrl}/contents/sensors?ref=main`;
     } else {
       url = `${baseUrl}/contents/${path}?ref=main`;
     }
