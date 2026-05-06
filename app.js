@@ -9,6 +9,12 @@ let cache = {};
 let registry = null;
 let sensors = [];
 
+// Live layer state — last-parsed thesis-trader (so alerts can check
+// SL/TP/expiry against live BTC price), and latest tickers + anchors.
+let liveTrade   = null;
+let liveTickers = null;
+let liveAnchors = null;
+
 // --- Sensor roles: layout + renderer choice ------------------------------
 // Group order = visual row order. Each group renders as its own 12-col row.
 // Sensors not listed default to { group: 'research', span: 3, renderer: 'generic' }.
@@ -529,9 +535,10 @@ function renderMarketCard(content) {
     <div class="market-primary">
       <div class="market-main">
         <div class="market-ticker">BTC</div>
-        <div class="market-price">$${d.btcPrice}</div>
-        <div class="market-change ${colorClass(d.btc24h)}">${d.btc24h}</div>
-        ${d.btc7d ? `<div class="market-7d ${colorClass(d.btc7d)}">${d.btc7d} 7d</div>` : ''}
+        <div class="market-price" data-live="BTC-price">$${d.btcPrice}</div>
+        <div class="market-change ${colorClass(d.btc24h)}" data-live="BTC-24h">${d.btc24h}</div>
+        ${d.btc7d ? `<div class="market-7d ${colorClass(d.btc7d)}" data-live="BTC-7d">${d.btc7d} 7d</div>` : ''}
+        <div class="market-live-stamp" data-live="stamp"></div>
       </div>
       ${d.btcAthDist ? `<div class="market-ath-block">
         <div class="ath-label">van ATH</div>
@@ -542,8 +549,8 @@ function renderMarketCard(content) {
     <div class="market-alt">
       ${d.ethPrice ? `<div class="market-alt-row">
         <span class="alt-ticker">ETH</span>
-        <span class="alt-price">$${d.ethPrice}</span>
-        <span class="alt-change ${colorClass(d.eth24h)}">${d.eth24h}</span>
+        <span class="alt-price" data-live="ETH-price">$${d.ethPrice}</span>
+        <span class="alt-change ${colorClass(d.eth24h)}" data-live="ETH-24h">${d.eth24h}</span>
         ${d.ethAthDist ? `<span class="alt-ath ${colorClass(d.ethAthDist)}">${d.ethAthDist}</span>` : ''}
       </div>` : ''}
     </div>
@@ -735,15 +742,33 @@ function renderThesisTraderCard(content) {
   const mtmCls = t && t.mtmPct ? colorClass(t.mtmPct) : '';
   const slCls = t && t.sl && t.sl.status === 'VEILIG' ? 'pos' : 'neg';
 
+  // Stash the parsed trade for the live alert layer (TP/SL/expiry checks).
+  // Numbers come out of markdown with thousand-commas; strip for arithmetic.
+  const numFromStr = s => s ? parseFloat(String(s).replace(/[^0-9.-]/g, '')) : null;
+  if (t) {
+    liveTrade = {
+      id: t.id,
+      direction: t.direction,
+      entry: numFromStr(t.entryPrice),
+      tp1: t.tp1 ? numFromStr(t.tp1.price) : null,
+      tp2: t.tp2 ? numFromStr(t.tp2.price) : null,
+      sl:  t.sl  ? numFromStr(t.sl.price)  : null,
+      expiryISO: t.expiry ? t.expiry.date : null,
+    };
+  } else {
+    liveTrade = null;
+  }
+
+  const entryNum = t ? numFromStr(t.entryPrice) : null;
   return `
     <div class="tt-header">
       <div class="tt-status">${d.status || ''}</div>
-      ${d.price ? `<div class="tt-price">BTC $${d.price}</div>` : ''}
+      ${d.price ? `<div class="tt-price" data-live="BTC-price-tt">BTC $${d.price}</div>` : ''}
     </div>
     ${t ? `
-      <div class="tt-trade">
+      <div class="tt-trade" data-tt-entry="${entryNum || ''}" data-tt-direction="${t.direction || ''}" data-tt-id="${t.id || ''}">
         <div class="tt-trade-id">${t.id}${t.direction ? ' · ' + t.direction : ''}${t.age ? ' · ' + t.age : ''}</div>
-        ${t.mtmPct ? `<div class="tt-mtm ${mtmCls}">${t.mtmPct} <span class="tt-r">${t.mtmR || ''}</span></div>` : ''}
+        ${t.mtmPct ? `<div class="tt-mtm ${mtmCls}" data-live="tt-mtm">${t.mtmPct} <span class="tt-r">${t.mtmR || ''}</span></div>` : ''}
         <div class="tt-grid">
           ${t.entryPrice ? `<div class="tt-cell"><div class="tt-k">Entry</div><div class="tt-v">$${t.entryPrice}</div></div>` : ''}
           ${t.tp1 ? `<div class="tt-cell"><div class="tt-k">TP1</div><div class="tt-v">$${t.tp1.price} <span class="tt-dim">${t.tp1.pct}</span></div></div>` : ''}
@@ -885,6 +910,148 @@ async function renderDashboard() {
       if (body) body.innerHTML = `<div class="card-waiting">Laad fout: ${e.message}</div>`;
     }
   }));
+}
+
+// --- Live layer (Kraken 15s) --------------------------------------------
+
+// Format with thousand separators. 2 decimals for liquid majors so the live
+// layer's seconds-precision ticking is visible; more decimals for sub-dollar
+// alts (FARTCOIN, PUMP, MINA-class) so movement isn't quantized away.
+function fmtPrice(p) {
+  if (p == null || isNaN(p)) return '—';
+  const decimals = p >= 100 ? 2 : p >= 1 ? 3 : p >= 0.01 ? 4 : 6;
+  return p.toLocaleString('en-US', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+}
+
+function fmtStamp(ts) {
+  const d = new Date(ts);
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  const ss = String(d.getSeconds()).padStart(2, '0');
+  return `${hh}:${mm}:${ss} live`;
+}
+
+// Inject live BTC/ETH prices into the market card and thesis-trader card.
+// Re-derives 24h change from anchors when available so the percentage moves
+// in lock-step with the price.
+function injectLivePrices() {
+  if (!liveTickers) return;
+  const btc = liveTickers.BTC;
+  const eth = liveTickers.ETH;
+  const stamp = liveTickers._fetchedAt || Date.now();
+
+  document.querySelectorAll('[data-live="BTC-price"]').forEach(el => {
+    if (btc != null) el.textContent = '$' + fmtPrice(btc);
+  });
+  document.querySelectorAll('[data-live="BTC-price-tt"]').forEach(el => {
+    if (btc != null) el.textContent = 'BTC $' + fmtPrice(btc);
+  });
+  document.querySelectorAll('[data-live="ETH-price"]').forEach(el => {
+    if (eth != null) el.textContent = '$' + fmtPrice(eth);
+  });
+  document.querySelectorAll('[data-live="stamp"]').forEach(el => {
+    el.textContent = fmtStamp(stamp);
+  });
+
+  // Recompute 24h change from anchors when we have them.
+  if (liveAnchors && window.Thermometer) {
+    const T = window.Thermometer;
+    const update24h = (sym, sel) => {
+      const ank = liveAnchors[sym] && liveAnchors[sym]['24h'];
+      const live = liveTickers[sym];
+      const pct = T.pctChange(live, ank);
+      if (pct == null) return;
+      document.querySelectorAll(`[data-live="${sel}"]`).forEach(el => {
+        el.textContent = T.fmtPct(pct);
+        el.classList.remove('pos', 'neg');
+        el.classList.add(pct >= 0 ? 'pos' : 'neg');
+      });
+    };
+    update24h('BTC', 'BTC-24h');
+    update24h('ETH', 'ETH-24h');
+
+    // 7d for BTC if rendered.
+    const ank7 = liveAnchors.BTC && liveAnchors.BTC['7d'];
+    if (ank7 && btc != null) {
+      const pct = T.pctChange(btc, ank7);
+      document.querySelectorAll('[data-live="BTC-7d"]').forEach(el => {
+        if (pct == null) return;
+        el.textContent = T.fmtPct(pct) + ' 7d';
+        el.classList.remove('pos', 'neg');
+        el.classList.add(pct >= 0 ? 'pos' : 'neg');
+      });
+    }
+  }
+
+  // Thesis-trader MTM recompute from live BTC vs entry.
+  document.querySelectorAll('[data-live="tt-mtm"]').forEach(el => {
+    const tradeEl = el.closest('.tt-trade');
+    if (!tradeEl || btc == null) return;
+    const entry = parseFloat(tradeEl.dataset.ttEntry);
+    const dir = (tradeEl.dataset.ttDirection || '').toUpperCase();
+    if (!entry || isNaN(entry)) return;
+    const pct = dir === 'SHORT'
+      ? ((entry - btc) / entry) * 100
+      : ((btc - entry) / entry) * 100;
+    const sign = pct > 0 ? '+' : '';
+    const txt = `${sign}${pct.toFixed(2)}%`;
+    // Preserve the trailing R-multiple span if it was present (we keep a
+    // reference, then rebuild the node so the leading text node updates).
+    const rSpan = el.querySelector('.tt-r');
+    el.textContent = txt + ' ';
+    if (rSpan) el.appendChild(rSpan);
+    el.classList.remove('pos', 'neg');
+    el.classList.add(pct >= 0 ? 'pos' : 'neg');
+  });
+}
+
+async function liveTick() {
+  try {
+    const [tickers, anchors] = await Promise.all([
+      window.Kraken.fetchTickers(),
+      window.Kraken.fetchAllAnchors(),
+    ]);
+    liveTickers = tickers;
+    liveAnchors = anchors;
+
+    if (window.Thermometers) {
+      window.Thermometers.updateThermometers({
+        tickers, anchors, fetchedAt: tickers._fetchedAt,
+      });
+    }
+
+    injectLivePrices();
+
+    // Build alert state and feed the engine.
+    if (window.Alerts) {
+      const T = window.Thermometer;
+      const thermo = {};
+      for (const a of window.Kraken.ASSETS) {
+        const live = tickers[a.symbol];
+        const ank = anchors[a.symbol];
+        thermo[a.symbol] = T.classifyAsset(live, ank);
+      }
+      window.Alerts.tick({
+        tickers,
+        thermo,
+        trade: liveTrade,
+      });
+    }
+  } catch (e) {
+    // Live layer is best-effort — don't fail the dashboard.
+    // eslint-disable-next-line no-console
+    console.warn('[pulse] live tick failed', e);
+  }
+}
+
+let liveTimer = null;
+function startLiveLoop() {
+  if (liveTimer) clearInterval(liveTimer);
+  liveTick();
+  liveTimer = setInterval(liveTick, 15000);
 }
 
 // --- Document view -------------------------------------------------------
@@ -1079,6 +1246,13 @@ window.addEventListener('hashchange', handleRoute);
 // --- Init ----------------------------------------------------------------
 
 async function init() {
+  // Live layer wiring — alerts banner + thermometers skeleton render
+  // immediately so the page feels populated even before Kraken responds.
+  if (window.Alerts) window.Alerts.init(document.getElementById('alert-stack'));
+  if (window.Thermometers) {
+    window.Thermometers.mountThermometers(document.getElementById('thermometers'));
+  }
+
   try {
     await fetchTree();
     await renderDashboard();
@@ -1087,6 +1261,8 @@ async function init() {
     document.getElementById('sensor-grid').innerHTML =
       '<p class="loading">Failed to connect to wiki API. Check GITHUB_PAT env var.</p>';
   }
+
+  startLiveLoop();
 
   setInterval(async () => {
     cache = {};
@@ -1097,6 +1273,8 @@ async function init() {
       await fetchTree();
       if (document.getElementById('dashboard-view').classList.contains('active')) {
         await renderDashboard();
+        // Re-paint live values into the freshly-rendered cards.
+        injectLivePrices();
       }
     } catch (e) { /* silent refresh failure */ }
   }, 300000);

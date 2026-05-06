@@ -802,6 +802,10 @@ body {
 @media (max-width: 700px) {
   #nav { padding: 0.75rem 1rem; }
   .view { padding: 1rem; }
+  #alert-stack.has-alerts { padding: 0.5rem 1rem 0; }
+  .thermo-row { grid-template-columns: 3rem repeat(4, 1fr); gap: 0.4rem; }
+  .thermo-cell { grid-template-columns: 1fr 2.5rem; }
+  .thermo-pct { font-size: 0.65rem; }
 
   .sensor-grid { grid-template-columns: 1fr; }
   .sensor-card.span-3,
@@ -891,6 +895,179 @@ body {
   margin-top: 0.4rem;
   padding-top: 0.4rem;
   border-top: 1px dashed var(--border);
+}
+
+/* ─── LIVE LAYER (Kraken 15s) ─── */
+
+/* Alert banner stack — sits above the dashboard, persistent until dismissed. */
+#alert-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+#alert-stack.has-alerts {
+  padding: 0.75rem 2rem 0;
+}
+.alert-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.55rem 0.85rem;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+}
+.alert-banner.alert-normal   { border-color: rgba(234,179,8,0.35); background: rgba(234,179,8,0.06); }
+.alert-banner.alert-strong   { border-color: rgba(34,197,94,0.45); background: rgba(34,197,94,0.08); }
+.alert-banner.alert-critical { border-color: rgba(239,68,68,0.55); background: rgba(239,68,68,0.10); }
+.alert-time { color: var(--text-dim); font-size: 0.72rem; min-width: 3rem; }
+.alert-msg  { color: var(--text); flex: 1; }
+.alert-dismiss {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 1.05rem;
+  cursor: pointer;
+  padding: 0 0.25rem;
+  line-height: 1;
+}
+.alert-dismiss:hover { color: var(--text); }
+
+/* Thermometer block — sits above sensor-grid. */
+#thermometers {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  margin-bottom: 1.5rem;
+}
+.thermo-section { }
+.thermo-section-label {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--text-dim);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  margin-bottom: 0.35rem;
+}
+.thermo-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+}
+.thermo-row {
+  display: grid;
+  grid-template-columns: 4rem repeat(4, 1fr);
+  gap: 0.6rem;
+  align-items: center;
+  padding: 0.18rem 0;
+}
+.thermo-row.thermo-head {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.3rem;
+  margin-bottom: 0.15rem;
+}
+.thermo-asset {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.thermo-head-cell {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: var(--text-dim);
+  text-align: center;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.thermo-cell {
+  display: grid;
+  grid-template-columns: 1fr 3rem;
+  gap: 0.5rem;
+  align-items: center;
+}
+.thermo-bar {
+  position: relative;
+  height: 6px;
+  background: transparent;
+  border-radius: 2px;
+  overflow: hidden;
+}
+.thermo-bar-track {
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0.04);
+  border-radius: 2px;
+}
+.thermo-bar-mid {
+  position: absolute;
+  top: 0; bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: rgba(255,255,255,0.12);
+}
+.thermo-bar-fill {
+  position: absolute;
+  top: 0; bottom: 0;
+  border-radius: 2px;
+  transition: left 0.3s ease, width 0.3s ease, background 0.3s ease;
+  background: var(--text-dim);
+}
+.thermo-bull .thermo-bar-fill { background: var(--green); }
+.thermo-bear .thermo-bar-fill { background: var(--red); }
+.thermo-neutral .thermo-bar-fill { background: rgba(234,179,8,0.5); }
+.thermo-pending .thermo-bar-fill { background: rgba(255,255,255,0.06); }
+.thermo-pct {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.thermo-bull .thermo-pct { color: var(--green); }
+.thermo-bear .thermo-pct { color: var(--red); }
+.thermo-neutral .thermo-pct { color: var(--text-dim); }
+.thermo-meta {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  letter-spacing: 0.05em;
+}
+.thermo-divider { opacity: 0.4; }
+
+/* Live timestamp under market-card BTC price (seconds-precise) */
+.market-live-stamp {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--text-dim);
+  letter-spacing: 0.06em;
+  margin-top: 0.2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.market-live-stamp::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 4px rgba(34,197,94,0.6);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
 }
 
 /* ─── MARKET INDICATORS ─── */
