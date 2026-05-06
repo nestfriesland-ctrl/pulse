@@ -73,6 +73,13 @@
     } catch (e) { return null; }
   }
 
+  // MACHINEKAMER-ONLY. De claim "groene blok per dag = sensor-commit op die dag
+  // = service draaide" werkt alleen voor sensors met daily-of-snellere cadence
+  // (infra/enrichment/nest-seo/machinekamer-meta-aggregator). Voor sensors
+  // waar lange-stilte normaal is (anti-fragile cycles ~1 per 6 weken,
+  // ta-setups ma+vr) zou de strip 41 stille dagen visueel gelijkstellen aan
+  // een dood systeem — aliasing-fout: commit-frequentie ≠ service-uptime.
+  // Niet hergebruiken buiten MACHINEKAMER zonder cadence-aware drempel.
   function buildUptimeRow(name, dates) {
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);

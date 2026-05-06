@@ -13,17 +13,21 @@
 (function () {
   const U = () => window.PulseUtil;
 
-  function tileHtml(slot, { verschoven, katernName }) {
+  function tileHtml(slot, { verschoven, katernName, displaySensor }) {
     const u = U();
     const { name, content, krant, regime, meta } = slot;
+    // displaySensor maps sensor file-name → display alias (machinekamer →
+    // meta-stelling) zodat de URL `#machinekamer/meta-stelling` wordt en
+    // niet `#machinekamer/machinekamer`.
+    const display = displaySensor ? displaySensor(name) : name;
     const kickerCls = u.regimeKickerClass(regime);
-    const kickerLabel = u.titleize(name);
+    const kickerLabel = u.titleize(display);
     const kickerText = regime
       ? `${kickerLabel} · ${u.shortenRegime(regime)}`
       : kickerLabel;
     const headline = u.shapeHeadline(krant && krant.stelling)
       || u.fallbackHeadline(content)
-      || u.titleize(name);
+      || u.titleize(display);
     const deck = u.shapeDeck(krant && krant.bewijs) || '';
     const lastU = (meta && meta.lastUpdated) ? meta.lastUpdated : '—';
     const freshClass = (meta && meta.status) ? ` fresh-${meta.status}` : '';
@@ -36,7 +40,7 @@
         ${deck ? `<p class="deck">${u.escape(deck)}</p>` : ''}
         <div class="tile-foot">
           <span class="run">run · ${u.escape(lastU)}</span>
-          <a class="deep-link" href="#${u.escape(katernName)}/${u.escape(name)}">→ deep</a>
+          <a class="deep-link" href="#${u.escape(katernName)}/${u.escape(display)}">→ deep</a>
         </div>
       </article>
     `;
@@ -93,7 +97,7 @@
     return '';
   }
 
-  function render({ view, katernName, def, sensors, contents, lastView, parseSensorMeta, parseRegime, parseKrant }) {
+  function render({ view, katernName, def, sensors, contents, lastView, parseSensorMeta, parseRegime, parseKrant, displaySensor }) {
     if (!view || !def) return;
     const u = U();
 
@@ -113,7 +117,7 @@
       ? slotsData.map(s => {
           const sensorTs = (s.meta && s.meta.lastUpdated) ? new Date(s.meta.lastUpdated).getTime() : null;
           const verschoven = lvTs && sensorTs && !isNaN(sensorTs) && sensorTs > lvTs;
-          return tileHtml(s, { verschoven, katernName });
+          return tileHtml(s, { verschoven, katernName, displaySensor });
         }).join('')
       : emptyHtml(katernName);
 

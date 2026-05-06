@@ -381,6 +381,29 @@ for (const [katernName, def] of Object.entries(KATERN_DEFS)) {
   for (const s of def.sensors) KATERN_MAP[s] = katernName;
 }
 
+// --- Sensor display-override (naam-collisie fix) ------------------------
+//
+// De sensor `machinekamer` zit in het katern `machinekamer`. Hash-route zou
+// `#machinekamer/machinekamer` worden — register-bug, want de katern-naam
+// verliest zijn semantisch werk. We geven deze sensor een display-alias
+// (`meta-stelling`) voor URL + tile-label, zonder de wiki-file zelf aan te
+// raken (dat zou morning-paper, sensor-runner, registry-heading e.d. mee-
+// slepen). Wiki file-rename kan los volgen.
+
+const SENSOR_FILE_TO_DISPLAY = {
+  'machinekamer': 'meta-stelling',
+};
+const SENSOR_DISPLAY_TO_FILE = Object.fromEntries(
+  Object.entries(SENSOR_FILE_TO_DISPLAY).map(([k, v]) => [v, k])
+);
+
+function displaySensor(fileName) {
+  return SENSOR_FILE_TO_DISPLAY[fileName] || fileName;
+}
+function fileSensor(displayName) {
+  return SENSOR_DISPLAY_TO_FILE[displayName] || displayName;
+}
+
 // --- Tijd-delta (per-katern last-view in localStorage) -------------------
 //
 // Mechaniek: bij elk bezoek aan een katern-pagina lezen we de vorige
@@ -521,11 +544,12 @@ async function renderDashboard() {
     });
   }
 
-  // STRIP — small sensors.
+  // STRIP — small sensors. Label gebruikt display-override zodat
+  // 'machinekamer' als 'meta-stelling' verschijnt (naam-collisie-fix).
   if (window.PulseStrip) {
     const stripSlots = STRIP_NAMES
       .filter(n => visible.includes(n))
-      .map(n => ({ name: n, label: n, content: contents[n] || null }));
+      .map(n => ({ name: n, label: displaySensor(n), content: contents[n] || null }));
     window.PulseStrip.render({
       section: document.getElementById('sec-strip'),
       slots: stripSlots,
@@ -583,6 +607,7 @@ async function renderKatern(katernName) {
       parseSensorMeta,
       parseRegime,
       parseKrant,
+      displaySensor,
     });
   }
 
@@ -878,9 +903,10 @@ function handleRoute() {
       if (sensor) {
         // Laag 3 — sensor-deep. Tot getrapt-paradigma gemigreerd is (wacht
         // op NEMESIS A/B ≥55%) toont deze view de huidige sensor-md direct
-        // via document-view.
+        // via document-view. URL kan een display-alias zijn (`meta-stelling`)
+        // — translate terug naar file-naam (`machinekamer`) voor fetch.
         document.getElementById('document-view').classList.add('active');
-        renderDocument(`sensors/${sensor}.md`);
+        renderDocument(`sensors/${fileSensor(sensor)}.md`);
       } else {
         // Laag 2 — katern-voorpagina.
         document.getElementById('katern-view').classList.add('active');
