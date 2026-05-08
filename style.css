@@ -972,6 +972,25 @@ footer.editorial {
   font-weight: 400;
 }
 
+/* Tile-level visual dim for non-fresh sensors. A second-glance signal —
+   stale sensors aren't broken, they're just not from today. Ink-tint via
+   existing variables stays within the editorial palette. */
+.tile.fresh-stale {
+  opacity: 0.88;
+}
+.tile.fresh-stale h2,
+.tile.fresh-stale .deck {
+  color: var(--ink-soft);
+}
+
+.tile.fresh-down {
+  opacity: 0.72;
+}
+.tile.fresh-down h2,
+.tile.fresh-down .deck {
+  color: var(--ink-mute);
+}
+
 .katern-empty {
   border: 1px dashed var(--paper-rule);
   padding: 48px 32px;

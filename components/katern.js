@@ -41,7 +41,7 @@
         ${deck ? `<p class="deck">${u.escape(deck)}</p>` : ''}
         <div class="tile-foot">
           <span class="run">run · ${u.escape(lastU)}</span>
-          <a class="deep-link" href="#${u.escape(katernName)}/${u.escape(display)}">→ deep</a>
+          <a class="deep-link" href="#${u.escape(katernName)}/${u.escape(display)}">Lees verder</a>
         </div>
       </article>
     `;

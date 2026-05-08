@@ -213,8 +213,20 @@ window.PulseUtil = (function () {
     let out = s.trim();
     const firstSentence = out.match(/^[^.]+\./);
     if (firstSentence) out = firstSentence[0].trim();
-    if (out.length > max) out = out.slice(0, max - 1).replace(/\s+\S*$/, '') + '…';
-    return out;
+    if (out.length <= max) return out;
+
+    // Prefer cutting at an em-dash if one falls within range and the head is
+    // substantial — em-dash is a natural sentence break, leaves a clean period.
+    const dashIdx = out.lastIndexOf('—', max - 1);
+    if (dashIdx >= max * 0.5) {
+      return out.slice(0, dashIdx).trim().replace(/[,;:—\-]+$/, '') + '.';
+    }
+
+    // Default: word-boundary cut, strip trailing punctuation/brackets/quotes
+    // before appending ellipsis. Avoids the "— …" or "(…" patterns.
+    out = out.slice(0, max - 1).replace(/\s+\S*$/, '');
+    out = out.replace(/[\s,;:—\-({[\"']+$/, '');
+    return out + '…';
   }
 
   // Stelling is verbose ("Regime = X — claim. Bevestiging: ... Falsificatie: ...").
