@@ -7,9 +7,9 @@
 :root {
   --paper: #f4f1ea;
   --paper-rule: #d9d2c3;
-  --ink: #16140f;
-  --ink-soft: #4a463c;
-  --ink-mute: #756f5f;
+  --ink: #1e1a12;
+  --ink-soft: #524c40;
+  --ink-mute: #7a7464;
   --bull: #1f6e3f;
   --bear: #a02a26;
   --warn: #b67c0a;
@@ -35,10 +35,13 @@ html, body {
   color: var(--ink);
   font-family: var(--serif);
   font-size: 15px;
-  line-height: 1.45;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
-  background-image: radial-gradient(rgba(0,0,0,0.018) 1px, transparent 1px);
-  background-size: 3px 3px;
+  background-image:
+    radial-gradient(rgba(0,0,0,0.022) 1px, transparent 1px),
+    radial-gradient(rgba(0,0,0,0.014) 1.5px, transparent 1.5px);
+  background-size: 3px 3px, 7px 7px;
+  background-position: 0 0, 1px 2px;
 }
 
 a { color: inherit; }
