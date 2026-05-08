@@ -409,6 +409,13 @@ const KATERN_DEFS = {
     viz: 'necrologie',
     layout: 'necrologie',
   },
+  research: {
+    label: 'Research',
+    tagline: 'inbox · claims · hypotheses · log',
+    sensors: [],
+    viz: null,
+    layout: 'research',
+  },
 };
 
 const KATERN_MAP = {};
@@ -698,6 +705,17 @@ async function renderKatern(katernName) {
   if (!def || !view) return;
 
   const lastView = getKaternLastView(katernName);
+
+  // RESEARCH: aparte data-pad — fetch wiki/research/{user}/*. User komt
+  // uit subdomain (mathijs.press.me / tara.press.me); apex defaultet
+  // naar mathijs in fase 1.
+  if (katernName === 'research') {
+    if (window.PulseResearch) {
+      await window.PulseResearch.render({ view, def });
+    }
+    recordKaternView(katernName);
+    return;
+  }
 
   // NECROLOGIE: aparte data-pad — fetch wiki/necrologie/*.md ipv sensors.
   if (katernName === 'necrologie') {
@@ -1007,8 +1025,16 @@ function recordView(katern, sensor) {
   }
 }
 
+// On *.press.me subdomains the default landing is the research katern,
+// not the markt-cockpit dashboard. apex (press.me) keeps default behavior.
+function defaultRouteForHost() {
+  const host = (window.location && window.location.hostname) || '';
+  if (/^(mathijs|tara)\.press\.me$/i.test(host)) return 'research';
+  return 'dashboard';
+}
+
 function handleRoute() {
-  const hash = window.location.hash.slice(1) || 'dashboard';
+  const hash = window.location.hash.slice(1) || defaultRouteForHost();
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.nav-links a').forEach(a => a.classList.remove('active'));
 
