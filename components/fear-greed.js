@@ -142,7 +142,7 @@
     const cls = classify(parsed.value);
     const bandCls = regimeForBand(cls);
     const labelText = parsed.label || classToLabel(cls);
-    const headline = u.shapeHeadline(krant && krant.stelling) || `${labelText} — score ${parsed.value}`;
+    const headline = (krant && krant.kop) || u.shapeHeadline(krant && krant.stelling) || `${labelText} — score ${parsed.value}`;
     const falsifier = u.extractFalsifier(krant && krant.stelling) || '';
 
     section.innerHTML = `

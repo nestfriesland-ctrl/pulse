@@ -11,7 +11,7 @@
     if (!section) return;
     const u = U();
 
-    const headline = u.shapeHeadline(krant.stelling) || 'Marktstelling';
+    const headline = (krant && krant.kop) || u.shapeHeadline(krant.stelling) || 'Marktstelling';
     const deck = u.shapeDeck(krant.bewijs) || '';
     const bodyHtml = u.shapeBody(krant.les, krant.actie);
 

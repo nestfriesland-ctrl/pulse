@@ -25,7 +25,8 @@
     const kickerText = regime
       ? `${kickerLabel} · ${u.shortenRegime(regime)}`
       : kickerLabel;
-    const headline = u.shapeHeadline(krant && krant.stelling)
+    const headline = (krant && krant.kop)
+      || u.shapeHeadline(krant && krant.stelling)
       || u.fallbackHeadline(content)
       || u.titleize(display);
     const deck = u.shapeDeck(krant && krant.bewijs) || '';
@@ -67,7 +68,8 @@
   function leadHtml(slot) {
     const u = U();
     const { content, krant, regime, meta } = slot;
-    const headline = u.shapeHeadline(krant && krant.stelling)
+    const headline = (krant && krant.kop)
+      || u.shapeHeadline(krant && krant.stelling)
       || u.fallbackHeadline(content)
       || 'Observer-residue';
     const deck = u.shapeDeck(krant && krant.bewijs) || '';

@@ -175,10 +175,15 @@ function parseRegime(content) {
 function parseKrant(content) {
   if (!content) return { hasKrant: false };
   const krant = {};
+  // **Kop** is the priority headline — short editorial sentence written by
+  // the sensor for human readers. Falls back to shaped Stelling when absent.
+  // See wiki/operations/krant-stijlgids.md for the writing rules.
+  const kopMatch = content.match(/\*\*Kop:\*\*\s*(.+)/);
   const stellingMatch = content.match(/\*\*Stelling:\*\*\s*(.+)/);
   const bewijsMatch = content.match(/\*\*Bewijs:\*\*\s*([\s\S]*?)(?=\n\*\*Les:|\n\*\*Actie:|\n##)/);
   const lesMatch = content.match(/\*\*Les:\*\*\s*(.+)/);
   const actieMatch = content.match(/\*\*Actie:\*\*\s*(.+)/);
+  krant.kop = kopMatch ? kopMatch[1].trim() : null;
   krant.stelling = stellingMatch ? stellingMatch[1].trim() : null;
   krant.bewijs = bewijsMatch ? bewijsMatch[1].trim() : null;
   krant.les = lesMatch ? lesMatch[1].trim() : null;
@@ -189,7 +194,7 @@ function parseKrant(content) {
   krant.vorigeStelling = vorigeMatch ? vorigeMatch[1].trim() : null;
   krant.uitkomst = uitkomstMatch ? uitkomstMatch[1].trim() : null;
   krant.toelichting = toelichtingMatch ? toelichtingMatch[1].trim() : null;
-  krant.hasKrant = !!(krant.stelling || krant.les);
+  krant.hasKrant = !!(krant.kop || krant.stelling || krant.les);
   return krant;
 }
 

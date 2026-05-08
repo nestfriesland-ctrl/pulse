@@ -84,7 +84,7 @@
 
     const sideCls = (t.direction || '').toUpperCase() === 'SHORT' ? 'short' : '';
     const mtmCls = t.mtmPct && t.mtmPct.startsWith('-') ? 'bear' : '';
-    const headline = u.shapeHeadline(krant && krant.stelling)
+    const headline = (krant && krant.kop) || u.shapeHeadline(krant && krant.stelling)
       || `${t.id} ${t.direction} draait door`;
     const body = u.shapeBodyParagraph(krant && krant.les, krant && krant.actie)
       || u.shapeBodyParagraph(d.status);

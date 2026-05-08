@@ -13,7 +13,7 @@
     const kickerText = regime
       ? `${kickerLabel} · ${u.shortenRegime(regime)}`
       : kickerLabel;
-    const headline = u.shapeHeadline(krant && krant.stelling)
+    const headline = (krant && krant.kop) || u.shapeHeadline(krant && krant.stelling)
       || u.fallbackHeadline(content)
       || u.titleize(name);
     const body = u.shapeTripleBody(krant && krant.les, krant && krant.actie, content);
