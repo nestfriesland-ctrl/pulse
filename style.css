@@ -1244,12 +1244,36 @@ footer.editorial {
   width: 100%;
 }
 
+/* ─── LIQUIDITY-TIDE FEATURE ──────────────────────────────────────── */
+.liquidity-tide-section { padding: 22px 0; border-bottom: 1px solid var(--paper-rule); }
+.lt-band { display: grid; grid-template-columns: 240px 1fr 280px; gap: 28px; align-items: stretch; }
+.lt-band .kicker { font-family: var(--sans); font-size: 10px; text-transform: uppercase; letter-spacing: 0.2em; color: #2a5a6e; margin-bottom: 6px; }
+.lt-claim h3 { font-family: var(--display); font-weight: 700; font-size: 19px; line-height: 1.25; margin: 0 0 8px; letter-spacing: -0.01em; }
+.lt-claim .falsifier { font-family: var(--mono); font-size: 11px; color: var(--ink-soft); border-left: 2px solid #2a5a6e; padding: 6px 10px; background: rgba(42,90,110,0.05); margin-top: 8px; }
+.lt-viz { min-height: 220px; display: flex; align-items: center; }
+.lt-viz svg { width: 100%; height: auto; }
+.lt-table { border-left: 1px solid var(--paper-rule); padding-left: 18px; font-family: var(--serif); font-size: 12px; }
+.lt-table table { width: 100%; border-collapse: collapse; }
+.lt-table th { font-family: var(--sans); font-size: 9px; text-transform: uppercase; letter-spacing: 0.14em; text-align: left; color: var(--ink-mute); border-bottom: 1px solid var(--paper-rule); padding: 4px 6px 4px 0; }
+.lt-table td { padding: 3px 6px 3px 0; border-bottom: 1px solid rgba(22,20,15,0.06); }
+.lt-table .lt-asset { font-family: var(--mono); font-weight: 600; }
+.lt-table .lt-regime { font-family: var(--sans); font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; }
+.lt-actie { margin-top: 10px; font-family: var(--serif); font-size: 12px; color: var(--ink-soft); }
+.lt-actie .kicker { display: inline; margin-right: 6px; }
+.lt-empty { font-family: var(--mono); font-size: 12px; color: var(--ink-mute); padding: 24px 0; }
+.lt-katern-block { padding: 14px 0; border-bottom: 1px solid var(--paper-rule); }
+.lt-katern-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+.lt-katern-head .regime { font-family: var(--mono); font-size: 11px; color: #2a5a6e; }
+.lt-katern-kop { font-family: var(--display); font-size: 15px; line-height: 1.3; margin-bottom: 8px; }
+
 /* ─── MOBILE ────────────────────────────────────────────────────── */
 @media (max-width: 1100px) {
   .lead { grid-template-columns: 1fr; }
   .lead aside { border-left: none; padding-left: 0; border-top: 1px solid var(--paper-rule); padding-top: 18px; }
   .fg-band { grid-template-columns: 1fr; }
   .fg-band .fg-claim { border-left: none; padding-left: 0; border-top: 1px solid var(--paper-rule); padding-top: 14px; }
+  .lt-band { grid-template-columns: 1fr; gap: 16px; }
+  .lt-table { border-left: none; padding-left: 0; border-top: 1px solid var(--paper-rule); padding-top: 12px; }
   .position-inset { grid-template-columns: 1fr; }
   .position-inset .corner { border-right: none; padding-right: 0; border-bottom: 1px solid var(--paper-rule); padding-bottom: 14px; }
   .position-inset .levels { border-left: none; padding-left: 0; text-align: left; border-top: 1px solid var(--paper-rule); padding-top: 14px; }

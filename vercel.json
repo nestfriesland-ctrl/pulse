@@ -9,5 +9,15 @@
         { "key": "Cache-Control", "value": "s-maxage=300, stale-while-revalidate" }
       ]
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/liquidity-tide",
+      "schedule": "0 */4 * * *"
+    },
+    {
+      "path": "/api/cron/liquidity-sweep-poll",
+      "schedule": "*/15 * * * *"
+    }
   ]
 }
