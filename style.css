@@ -200,6 +200,35 @@ a { color: inherit; }
 }
 .lead .kicker.bull { color: var(--bull); }
 .lead .kicker.neut { color: var(--ink-mute); }
+
+/* Katern-accent-kleuren — kicker-niveau, regime-class wint waar aanwezig.
+   Lichaam = terracotta (aards, geen overlap met bull-groen of warn-oker).
+   NEMESIS = gedempt paars (koel, adversarial, geen overlap met bear-rood).
+   :not(.bull):not(.bear) zorgt dat regime-betekenis prevaleert wanneer
+   sensor regime-class oplevert. */
+.lichaam-lead .kicker:not(.bull):not(.bear),
+.lichaam-cortex .kicker:not(.bull):not(.bear) { color: #5c3a1f; }
+.lichaam-brier .kicker:not(.bull):not(.bear) { color: #7a4a2a; }
+.lichaam-bloed .kicker:not(.bull):not(.bear) { color: #3a2410; font-weight: 600; }
+.nemesis-lead .kicker:not(.bull):not(.bear),
+.nemesis-tribunal .kicker:not(.bull):not(.bear),
+.nemesis-graveyard .kicker:not(.bull):not(.bear) { color: #5d3a7a; }
+
+/* Marker voor sensors op KANDIDAAT-VERWIJDERING */
+.tile.kandidaat,
+.tile.kandidaat .kicker { opacity: 0.72; }
+.tile.kandidaat::after {
+  content: "kandidaat-verwijdering";
+  display: block;
+  font-family: var(--sans);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--ink-mute);
+  margin-top: 8px;
+  border-top: 1px dashed var(--paper-rule);
+  padding-top: 6px;
+}
 .lead h1 {
   font-family: var(--display);
   font-weight: 700;

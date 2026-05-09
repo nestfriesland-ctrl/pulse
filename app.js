@@ -105,9 +105,14 @@ function shouldDisplay(sensorName) {
   const reg = lookupRegistry(sensorName);
   if (!reg) return true;
   if (reg.status === 'GEARCHIVEERD') return false;
-  if (reg.status === 'KANDIDAAT-VERWIJDERING') return false;
-  if (reg.verdict === 'KANDIDAAT-VOOR-VERWIJDERING') return false;
   return true;
+}
+
+function isKandidaat(sensorName) {
+  const reg = lookupRegistry(sensorName);
+  if (!reg) return false;
+  return reg.status === 'KANDIDAAT-VERWIJDERING'
+    || reg.verdict === 'KANDIDAAT-VOOR-VERWIJDERING';
 }
 
 // --- Sensor meta + parsing ----------------------------------------------
@@ -736,6 +741,7 @@ async function renderKatern(katernName) {
       parseRegime,
       parseKrant,
       displaySensor,
+      isKandidaat,
     });
   }
 

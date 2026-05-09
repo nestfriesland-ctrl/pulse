@@ -13,7 +13,7 @@
 (function () {
   const U = () => window.PulseUtil;
 
-  function tileHtml(slot, { verschoven, katernName, displaySensor }) {
+  function tileHtml(slot, { verschoven, katernName, displaySensor, isKandidaat }) {
     const u = U();
     const { name, content, krant, regime, meta } = slot;
     // displaySensor maps sensor file-name → display alias (machinekamer →
@@ -32,9 +32,10 @@
     const deck = u.shapeDeck(krant && krant.bewijs) || '';
     const lastU = (meta && meta.lastUpdated) ? meta.lastUpdated : '—';
     const freshClass = (meta && meta.status) ? ` fresh-${meta.status}` : '';
+    const kandidaatClass = (typeof isKandidaat === 'function' && isKandidaat(name)) ? ' kandidaat' : '';
 
     return `
-      <article class="tile${freshClass}" data-sensor="${u.escape(name)}">
+      <article class="tile${freshClass}${kandidaatClass}" data-sensor="${u.escape(name)}">
         ${verschoven ? '<div class="tijd-delta-kicker">verschoven sinds u laatst keek</div>' : ''}
         <div class="kicker ${kickerCls}">${u.escape(kickerText)}</div>
         <h2>${u.escape(headline)}</h2>
@@ -237,7 +238,7 @@
     `;
   }
 
-  function render({ view, katernName, def, sensors, contents, lastView, parseSensorMeta, parseRegime, parseKrant, displaySensor, entries }) {
+  function render({ view, katernName, def, sensors, contents, lastView, parseSensorMeta, parseRegime, parseKrant, displaySensor, isKandidaat, entries }) {
     if (!view || !def) return;
     const u = U();
 
@@ -278,7 +279,7 @@
         ? slotsData.map(s => {
             const sensorTs = (s.meta && s.meta.lastUpdated) ? new Date(s.meta.lastUpdated).getTime() : null;
             const verschoven = lvTs && sensorTs && !isNaN(sensorTs) && sensorTs > lvTs;
-            return tileHtml(s, { verschoven, katernName, displaySensor });
+            return tileHtml(s, { verschoven, katernName, displaySensor, isKandidaat });
           }).join('')
         : emptyHtml(katernName);
       const useLead = def.layout === 'lead' && slotsData.length && slotsData[0].content;
