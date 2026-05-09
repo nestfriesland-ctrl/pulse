@@ -385,7 +385,7 @@ const KATERN_DEFS = {
   markt: {
     label: 'Markt',
     tagline: 'crypto · macro · positie',
-    sensors: ['market', 'fear-greed', 'thesis-trader', 'confluence', 'macro-regime', 'anti-fragile', 'watchlist', 'ma200', 'ta-setups', 'backtest'],
+    sensors: ['market', 'fear-greed', 'liquidity-tide', 'thesis-trader', 'confluence', 'macro-regime', 'anti-fragile', 'watchlist', 'ma200', 'ta-setups', 'backtest'],
     viz: 'markt',
   },
   machinekamer: {
@@ -546,6 +546,16 @@ async function renderDashboard() {
       marketContent: market ? market.content : null,
       sensorContent: fgContent,
       krant: fgContent ? parseKrant(fgContent) : null,
+    });
+  }
+
+  // LIQUIDITY-TIDE feature — between F/G band and heat-index.
+  if (window.PulseLiquidityTide) {
+    const ltContent = contents['liquidity-tide'] || null;
+    const ltData = ltContent ? window.PulseLiquidityTide.parse(ltContent) : null;
+    window.PulseLiquidityTide.render({
+      section: document.getElementById('sec-liquidity-tide'),
+      data: ltData,
     });
   }
 
