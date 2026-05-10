@@ -18,6 +18,10 @@
     {
       "path": "/api/cron/liquidity-sweep-poll",
       "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/macro-regime",
+      "schedule": "0 */6 * * *"
     }
   ]
 }
