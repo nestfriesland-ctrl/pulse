@@ -177,6 +177,31 @@ function parseRegime(content) {
   return null;
 }
 
+function parseHowell(content) {
+  if (!content) return null;
+  const m = content.match(/##\s*Howell[^\n]*\n([\s\S]*?)(?=\n##\s|\n$)/i);
+  if (!m) return null;
+  const block = m[1];
+  const field = (key) => {
+    const fm = block.match(new RegExp(`^>\\s*${key}\\s*:\\s*(.+)`, 'mi'));
+    return fm ? fm[1].trim() : null;
+  };
+  const cyclePhase = field('cycle_phase');
+  const cycleLabel = field('cycle_label');
+  const pbocDirection = field('pboc_direction');
+  const yieldCurveSignal = field('yield_curve_signal');
+  const globalLiquidityTrend = field('global_liquidity_trend');
+  const lastHowellUpdate = field('last_howell_update');
+  const howellSource = field('howell_source');
+  const sumMatch = block.match(/Howell-samenvatting\s*:\s*([\s\S]*?)(?=\n\nFalsifieerbare|\n>|$)/i);
+  const summary = sumMatch ? sumMatch[1].trim().replace(/\s+/g, ' ') : null;
+  if (!cyclePhase && !pbocDirection && !summary) return null;
+  return {
+    cyclePhase, cycleLabel, pbocDirection, yieldCurveSignal,
+    globalLiquidityTrend, lastHowellUpdate, howellSource, summary,
+  };
+}
+
 function parseKrant(content) {
   if (!content) return { hasKrant: false };
   const krant = {};
@@ -514,6 +539,7 @@ async function renderDashboard() {
       krant: parseKrant(content),
       regime: parseRegime(content),
       meta: parseSensorMeta(content),
+      howell: name === 'macro-regime' ? parseHowell(content) : null,
     };
   };
 
