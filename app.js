@@ -8,6 +8,42 @@
 const API = '/api/wiki';
 const REGISTRY_PATH = 'operations/sensor-registry.md';
 
+// --- Tenant routing -----------------------------------------------------
+//
+// Pulse runt op meerdere subdomains (mathijs.puls.frl, tara.puls.frl). Per
+// hostname kiezen we welke katernen zichtbaar zijn en welke wiki-pad-prefix
+// gebruikt wordt voor sensor-files. Tenant-specifieke sensors leven in een
+// subdir (sensors/tara/skyld.md) zodat namespaces niet botsen.
+
+const TENANT_CONFIG = {
+  'mathijs.puls.frl': {
+    name: 'mathijs',
+    // Whitelist expliciet — SKYLD katern is tara-only en mag niet in mathijs-nav.
+    katernen: ['dashboard', 'markt', 'machinekamer', 'lichaam', 'residu', 'necrologie', 'nemesis'],
+    accent: null,
+  },
+  'tara.puls.frl': {
+    name: 'tara',
+    katernen: ['skyld'],   // alleen SKYLD katern
+    accent: '#1d6b5c',     // tara-teal
+  },
+};
+
+function getTenant() {
+  const host = (typeof window !== 'undefined' && window.location && window.location.hostname) || '';
+  return TENANT_CONFIG[host] || TENANT_CONFIG['mathijs.puls.frl'] || { name: 'default', katernen: null };
+}
+
+// Per-sensor file-path override. Default = sensors/<name>.md; tenants kunnen
+// hun eigen sensors onder een subdir hangen.
+const SENSOR_FILE_OVERRIDES = {
+  'skyld': 'sensors/tara/skyld.md',
+};
+
+function sensorFilePath(name) {
+  return SENSOR_FILE_OVERRIDES[name] || `sensors/${name}.md`;
+}
+
 let tree = null;
 let cache = {};
 let registry = null;
@@ -414,6 +450,13 @@ const KATERN_DEFS = {
     viz: 'necrologie',
     layout: 'necrologie',
   },
+  skyld: {
+    label: 'SKYLD',
+    tagline: 'CRM · enrichment · facturen · taken',
+    sensors: ['skyld'],
+    viz: null,
+    accent: '#1d6b5c',
+  },
 };
 
 const KATERN_MAP = {};
@@ -501,7 +544,7 @@ async function renderDashboard() {
   // Parallel content fetch.
   const contents = {};
   await Promise.allSettled(visible.map(async name => {
-    try { contents[name] = await fetchFile(`sensors/${name}.md`); }
+    try { contents[name] = await fetchFile(sensorFilePath(name)); }
     catch (e) { /* leave blank */ }
   }));
 
@@ -735,7 +778,7 @@ async function renderKatern(katernName) {
 
   const contents = {};
   await Promise.allSettled(visible.map(async name => {
-    try { contents[name] = await fetchFile(`sensors/${name}.md`); }
+    try { contents[name] = await fetchFile(sensorFilePath(name)); }
     catch (e) { /* leave blank */ }
   }));
 
@@ -1087,9 +1130,10 @@ function handleRoute() {
         // prefix is (H-CVD-12 → necrologie/H-CVD-12.md). Pad-segment komt uit
         // necrologie/, niet sensors/.
         document.getElementById('document-view').classList.add('active');
+        const sensorName = fileSensor(sensor);
         const docPath = (katern === 'necrologie')
           ? `necrologie/${sensor}.md`
-          : `sensors/${fileSensor(sensor)}.md`;
+          : sensorFilePath(sensorName);
         renderDocument(docPath);
         recordView(katern, sensor);
       } else {
@@ -1240,7 +1284,45 @@ window.addEventListener('hashchange', handleRoute);
 
 // --- Init ----------------------------------------------------------------
 
+function applyTenant() {
+  const tenant = getTenant();
+  // Body class voor CSS-targeting (.tenant-tara, .tenant-mathijs).
+  document.body.classList.add(`tenant-${tenant.name}`);
+
+  // Document-title aanpassen voor branding.
+  if (tenant.name === 'tara') {
+    document.title = 'PULSE — Tara';
+  } else if (tenant.name === 'mathijs') {
+    document.title = 'PULSE — Mathijs';
+  }
+
+  // Nav filteren: tonen alleen toegestane katernen plus dashboard/graph.
+  // tenant.katernen === null → alles tonen (mathijs).
+  if (tenant.katernen) {
+    const allowed = new Set(tenant.katernen);
+    document.querySelectorAll('.nav-links a').forEach(a => {
+      const view = a.dataset.view;
+      if (!view || view === 'graph') return;
+      if (view === 'dashboard') {
+        // tara heeft geen dashboard-tile; verberg of redirect.
+        if (!allowed.has('dashboard')) a.style.display = 'none';
+        return;
+      }
+      if (!allowed.has(view)) a.style.display = 'none';
+    });
+
+    // Default-route voor tenants zonder dashboard: redirect naar eerste katern.
+    if (!allowed.has('dashboard')) {
+      const current = (window.location.hash || '').slice(1) || 'dashboard';
+      if (current === 'dashboard' || current === '') {
+        window.location.hash = `#${tenant.katernen[0]}`;
+      }
+    }
+  }
+}
+
 async function init() {
+  applyTenant();
   if (window.Alerts) window.Alerts.init(document.getElementById('alert-stack'));
   if (window.Thermometers) {
     window.Thermometers.mountThermometers(document.getElementById('heat-grid'));
