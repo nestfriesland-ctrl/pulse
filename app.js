@@ -560,13 +560,10 @@ async function renderDashboard() {
     };
   };
 
-  // Masthead — show fresh sensor count.
-  const freshCount = visible.filter(n => {
-    const c = contents[n];
-    if (!c) return false;
-    const m = parseSensorMeta(c);
-    return m.status === 'fresh';
-  }).length;
+  // Masthead — fresh count komt nu uit drift-frontmatter (sensors_actief_live)
+  // i.p.v. een eigen 4h-drempel; pulse moet aligned zijn met drift-classificatie.
+  const driftCounts = await getDriftCounts();
+  const freshCount = driftCounts ? driftCounts.actief : 0;
   updateMastheadMeta(visible, freshCount);
 
   // LEAD — market sensor.
@@ -1400,43 +1397,52 @@ async function init() {
 }
 
 // ─── Pipeline health strip ───────────────────────────────────────────
+async function getDriftCounts() {
+  try {
+    const content = await fetchFile('sensors/drift.md');
+    const m = content.match(/^---\n([\s\S]*?)\n---/);
+    if (!m) return null;
+    const fm = {};
+    for (const line of m[1].split('\n')) {
+      const lm = line.match(/^([a-z_0-9]+):\s*(.+)$/i);
+      if (lm) fm[lm[1]] = lm[2].trim();
+    }
+    return {
+      actief: parseInt(fm.sensors_actief_live, 10) || 0,
+      wacht: parseInt(fm.sensors_wacht_op_runner, 10) || 0,
+      gepland: parseInt(fm.sensors_gepland, 10) || 0,
+      dood: parseInt(fm.sensors_dood, 10) || 0,
+      stale: parseInt(fm.sensors_stale, 10) || 0,
+      gearchiveerd: parseInt(fm.sensors_gearchiveerd, 10) || 0,
+      discrepancies: parseInt(fm.discrepancies, 10) || 0,
+      health: fm.pipeline_health || 'UNKNOWN',
+    };
+  } catch (e) { return null; }
+}
+
 async function renderPipelineHealth() {
   const el = document.getElementById('pipeline-health');
   if (!el) return;
-  try {
-    const content = await fetchFile('sensors/drift.md');
-    const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
-    if (!fmMatch) { el.textContent = 'pipeline n/a'; return; }
-    const fm = {};
-    for (const line of fmMatch[1].split('\n')) {
-      const m = line.match(/^([a-z_0-9]+):\s*(.+)$/i);
-      if (m) fm[m[1]] = m[2].trim();
-    }
-    const live = parseInt(fm.sensors_live, 10);
-    const stale = parseInt(fm.sensors_stale, 10);
-    const dood = parseInt(fm.sensors_dood, 10);
-    const uit = parseInt(fm.sensors_bewust_uit, 10);
-    const health = fm.pipeline_health || 'UNKNOWN';
-    const cls = health === 'KRITIEK' ? 'kritiek' : health === 'DEGRADED' ? 'degraded' : 'gezond';
-    el.classList.remove('gezond', 'degraded', 'kritiek');
-    el.classList.add(cls);
-    const gezond = (Number.isFinite(live) && Number.isFinite(dood) && Number.isFinite(stale))
-      ? (live - dood - stale) : '—';
-    el.innerHTML =
-      `<span class="ph-label">pipeline</span>` +
-      `<span class="ph-state">${health}</span>` +
-      `<span class="ph-stat ok">${gezond} ok</span>` +
-      `<span class="ph-stat stale">${Number.isFinite(stale) ? stale : '—'} stale</span>` +
-      `<span class="ph-stat dood">${Number.isFinite(dood) ? dood : '—'} dood</span>` +
-      `<span class="ph-stat uit">${Number.isFinite(uit) ? uit : '—'} uit</span>`;
-    if (!el._wired) {
-      el._wired = true;
-      const go = () => { window.location.hash = '#markt'; };
-      el.addEventListener('click', go);
-      el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); }});
-    }
-  } catch (e) {
-    el.textContent = 'pipeline n/a';
+  const counts = await getDriftCounts();
+  if (!counts) { el.textContent = 'pipeline n/a'; return; }
+  const { actief, wacht, dood, stale, gearchiveerd, discrepancies, health } = counts;
+  const cls = health === 'KRITIEK' ? 'kritiek' : health === 'DEGRADED' ? 'degraded' : 'gezond';
+  el.classList.remove('gezond', 'degraded', 'kritiek');
+  el.classList.add(cls);
+  el.innerHTML =
+    `<span class="ph-label">pipeline</span>` +
+    `<span class="ph-state">${health}</span>` +
+    `<span class="ph-stat ok">${actief} ok</span>` +
+    `<span class="ph-stat stale">${stale} stale</span>` +
+    `<span class="ph-stat dood">${dood} dood</span>` +
+    `<span class="ph-stat wacht">${wacht} wacht</span>` +
+    `<span class="ph-stat uit">${gearchiveerd} uit</span>` +
+    `<span class="ph-stat discrepancies">${discrepancies} discrepanties</span>`;
+  if (!el._wired) {
+    el._wired = true;
+    const go = () => { window.location.hash = '#markt'; };
+    el.addEventListener('click', go);
+    el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); }});
   }
 }
 
