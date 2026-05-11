@@ -64,7 +64,11 @@ async function fetchTree() {
 
 async function fetchFile(path) {
   if (cache[path]) return cache[path];
-  const r = await fetch(`${API}?path=${encodeURIComponent(path)}`);
+  // Minute-granular cache-bust voorkomt dat Vercel edge-cache stale sensor-
+  // files levert na een drift-runner update; de in-memory cache hierboven
+  // houdt het binnen één render goedkoop.
+  const bust = Math.floor(Date.now() / 60000);
+  const r = await fetch(`${API}?path=${encodeURIComponent(path)}&t=${bust}`);
   if (!r.ok) throw new Error(`Failed to load ${path}`);
   const data = await r.json();
   const content = data.decoded_content || (data.content ? atob(data.content) : '');
