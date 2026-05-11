@@ -7,10 +7,11 @@
  *   liquidity_regime : M2-EXPANDING | M2-CONTRACTING | M2-FLAT
  *
  * Sources:
- *   - FRED (DTWEXBGS=DXY-proxy, DGS10=US10Y, DFII10=TIPS10Y,
- *           T10YIE=breakeven, M2SL=M2). Requires FRED_API_KEY.
- *   - Yahoo Finance v8 (^VIX, GC=F=gold, SI=F=silver). Public, fragile;
- *     query2 fallback on query1 failure.
+ *   - Yahoo Finance v8 (^DXY=spot DXY ~98, ^VIX, GC=F=gold, SI=F=silver,
+ *     DX-Y.NYB as ^DXY fallback). Public, fragile; query2 fallback on query1 failure.
+ *   - FRED (DGS10=US10Y, DFII10=TIPS10Y, T10YIE=breakeven, M2SL=M2,
+ *     DTWEXBGS=DXY broad-weighted fallback ~118 — different scale, flagged in source tag).
+ *     Requires FRED_API_KEY.
  *   - CoinGecko (BTC spot + 200d history for MA200).
  *
  * Cadence: 6h (Vercel cron `0 ​*​/6 * * *`).
@@ -72,6 +73,28 @@ async function yahooDaily(symbol, range = '5d') {
     } catch (_) { /* try next host */ }
   }
   throw new Error(`yahoo_${symbol}_failed`);
+}
+
+// ── DXY (Yahoo spot primary, FRED broad-weighted fallback) ──
+// Spot DXY (~98) differs by ~20 points from FRED DTWEXBGS (broad trade-weighted ~118).
+// We prefer spot for confluence consistency across pulse sensors; fall back to FRED
+// only when Yahoo fails — and tag the source so downstream readers know.
+async function getDxy(fredKey) {
+  for (const symbol of ['^DXY', 'DX-Y.NYB']) {
+    try {
+      const series = await yahooDaily(symbol, '1mo'); // newest-last
+      if (series.length >= 3) {
+        const points = series.slice().reverse().map(p => ({
+          date: new Date(p.ts * 1000).toISOString().slice(0, 10),
+          value: p.close,
+        }));
+        return { points, source: `yahoo:${symbol}` };
+      }
+    } catch (_) { /* try next */ }
+  }
+  // Fallback: FRED broad trade-weighted — different scale, flag explicitly.
+  const points = await fredLatest('DTWEXBGS', fredKey, 6);
+  return { points, source: 'fred:DTWEXBGS(broad-weighted)' };
 }
 
 // ── CoinGecko ───────────────────────────────────────────────
@@ -203,7 +226,7 @@ function buildKrant({ regime, realRegime, liquidityRegime, vix, btc, btcMa200, d
   );
 
   const bewijs = cap(
-    `VIX ${fmt(vix)} | BTC ${fmt(btc, 0)} (MA200 ${fmt(btcMa200, 0)}) | DXY-prx ${fmt(dxy, 2)} (${dxyTrend}) | TIPS ${fmt(tips)} | BE ${fmt(breakeven)} | M2-MoM ${fmt(m2.mom)}% / 3m ${fmt(m2.avg3m)}%.`,
+    `VIX ${fmt(vix)} | BTC ${fmt(btc, 0)} (MA200 ${fmt(btcMa200, 0)}) | DXY ${fmt(dxy, 2)} (${dxyTrend}) | TIPS ${fmt(tips)} | BE ${fmt(breakeven)} | M2-MoM ${fmt(m2.mom)}% / 3m ${fmt(m2.avg3m)}%.`,
     CAP_BEWIJS,
   );
 
@@ -232,7 +255,7 @@ function buildMarkdown({
   cycleCount, lastAttemptedAt, lastSuccessfulAt,
   regime, realRegime, liquidityRegime,
   dxy, vix, gold, silver, us10y, tips, breakeven, m2, btc, btcMa200,
-  dxyTrend, errors,
+  dxyTrend, dxySrc, errors,
 }) {
   const krant = buildKrant({ regime, realRegime, liquidityRegime, vix, btc, btcMa200, dxy, tips, breakeven, m2, dxyTrend });
   const ratio = (gold != null && silver != null && silver > 0) ? gold / silver : null;
@@ -262,6 +285,7 @@ function buildMarkdown({
     `btc_ma200: ${fmt(btcMa200, 0)}`,
     `gold_silver_ratio: ${fmt(ratio, 2)}`,
     `dxy_trend: ${dxyTrend}`,
+    `dxy_source: ${dxySrc || 'unknown'}`,
     '---',
     '',
     '# Macro Regime',
@@ -272,7 +296,7 @@ function buildMarkdown({
     '',
     '| Variabele | Waarde | Niveau |',
     '|-----------|--------|--------|',
-    `| DXY (FRED DTWEXBGS) | ${fmt(dxy, 2)} | trend ${dxyTrend} |`,
+    `| DXY (${dxySrc || 'unknown'}) | ${fmt(dxy, 2)} | trend ${dxyTrend} |`,
     `| VIX | ${fmt(vix, 2)} | ${vix < VIX_RISK_ON ? 'low-vol' : vix > VIX_RISK_OFF ? 'stress' : 'mid'} |`,
     `| US 10Y | ${fmt(us10y, 2)}% | nominal yield |`,
     `| TIPS 10Y | ${fmt(tips, 2)}% | ${tips < TIPS_THRESHOLD ? 'easing-side' : 'tightening-side'} |`,
@@ -292,7 +316,7 @@ function buildMarkdown({
     '',
     '## Methodologie',
     '',
-    `Bronnen: FRED (DXY=DTWEXBGS, US10Y=DGS10, TIPS=DFII10, breakeven=T10YIE, M2=M2SL); Yahoo (^VIX, GC=F, SI=F); CoinGecko (BTC spot + 200d MA). Cadence 6u.`,
+    `Bronnen: Yahoo (^DXY spot ~98 primair; DX-Y.NYB fallback; ^VIX, GC=F, SI=F); FRED (US10Y=DGS10, TIPS=DFII10, breakeven=T10YIE, M2=M2SL; DTWEXBGS broad-weighted ~118 alleen als Yahoo faalt — schaal verschilt); CoinGecko (BTC spot + 200d MA). Cadence 6u. DXY-bron deze run: ${dxySrc || 'unknown'}.`,
     `Regime-rules: RISK-ON = VIX<${VIX_RISK_ON} & BTC>MA200; RISK-OFF = VIX>${VIX_RISK_OFF} of (BTC<MA200 & DXY-trend UP); anders TRANSITION. Real: TIPS<${TIPS_THRESHOLD} & BE>${BREAKEVEN_EASING_MIN} = REAL-EASING; TIPS>${TIPS_THRESHOLD} & BE<${BREAKEVEN_EASING_MIN} = REAL-TIGHTENING; anders NEUTRAL. M2: MoM>${M2_MOM_EXPANDING}% & 3m>${M2_3MAVG_EXPANDING}% = EXPANDING; MoM<0 of 3m<0 = CONTRACTING; anders FLAT.`,
     errors && errors.length ? `\n> errors: ${errors.join(' | ')}` : '',
   ].filter(l => l !== '').join('\n');
@@ -332,8 +356,8 @@ export default async function handler(req, res) {
     catch (e) { errors.push(`${label}:${e.message}`); return null; }
   };
 
-  const [dxyPts, us10yArr, tipsArr, beArr, m2Pts, vixSeries, goldSeries, silverSeries, btc, btcMa200] = await Promise.all([
-    safe('dxy', fredLatest('DTWEXBGS', fredKey, 6)),
+  const [dxyResult, us10yArr, tipsArr, beArr, m2Pts, vixSeries, goldSeries, silverSeries, btc, btcMa200] = await Promise.all([
+    safe('dxy', getDxy(fredKey)),
     safe('us10y', fredLatest('DGS10', fredKey, 1)),
     safe('tips', fredLatest('DFII10', fredKey, 1)),
     safe('breakeven', fredLatest('T10YIE', fredKey, 1)),
@@ -345,6 +369,8 @@ export default async function handler(req, res) {
     safe('btc_ma200', coingeckoBtc200d()),
   ]);
 
+  const dxyPts = dxyResult?.points ?? null;
+  const dxySrc = dxyResult?.source ?? 'unavailable';
   const dxy = dxyPts?.[0]?.value ?? null;
   const us10y = us10yArr?.[0]?.value ?? null;
   const tips = tipsArr?.[0]?.value ?? null;
@@ -364,7 +390,7 @@ export default async function handler(req, res) {
     cycleCount, lastAttemptedAt, lastSuccessfulAt: successAt,
     regime, realRegime, liquidityRegime,
     dxy, vix, gold, silver, us10y, tips, breakeven, m2, btc, btcMa200,
-    dxyTrend, errors,
+    dxyTrend, dxySrc, errors,
   });
 
   const written = await writeToWiki(md, prevSha).catch(() => false);
@@ -372,7 +398,7 @@ export default async function handler(req, res) {
   return res.status(200).json({
     regime, real_yield_regime: realRegime, liquidity_regime: liquidityRegime,
     cycleCount, written, errors,
-    snapshot: { dxy, vix, gold, silver, us10y, tips, breakeven, btc, btcMa200, m2 },
+    snapshot: { dxy, dxy_source: dxySrc, vix, gold, silver, us10y, tips, breakeven, btc, btcMa200, m2 },
     trigger: req.body?.trigger || 'manual',
   });
 }
