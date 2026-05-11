@@ -10,7 +10,7 @@
  *                       real-yield-regime (REAL-EASING / REAL-TIGHTENING / NEUTRAL)
  *                       liquidity-regime (M2-EXPANDING / M2-CONTRACTING / M2-FLAT)
  *   - watchlist.md    : regime (LEVEL_HIT / LEVEL_APPROACHING / NEUTRAL)
- *   - liquidity-tide.md: regime per asset (LOW_TIDE/BALANCED/LONG_HEAVY/SHORT_HEAVY/MAGNET_*/HIGH_TIDE)
+ *   - liquidity-tide.md: regime per asset (LOW_TIDE/BALANCED/LONG_HEAVY/SHORT_HEAVY/MAGNET_ABOVE/MAGNET_BELOW/HIGH_TIDE)
  *                        aggregaat (MIXED of meerderheid)
  *
  * Score: elke sensor levert -1 (bearish) / 0 (neutraal) / +1 (bullish).
@@ -57,11 +57,13 @@ async function fetchWikiFile(path) {
 }
 
 function parseFrontmatter(md) {
-  if (!md) return {};
-  const m = md.match(/^---\n([\s\S]*?)\n---/);
+  if (!md || typeof md !== 'string') return {};
+  // BOM- en CRLF-tolerant: strip optional UTF-8 BOM, accept \r\n line endings.
+  const stripped = md.replace(/^﻿/, '');
+  const m = stripped.match(/^---\r?\n([\s\S]*?)\r?\n---/);
   if (!m) return {};
   const fm = {};
-  for (const line of m[1].split('\n')) {
+  for (const line of m[1].split(/\r?\n/)) {
     const lm = line.match(/^([a-z_0-9]+):\s*(.+)$/i);
     if (lm) fm[lm[1]] = lm[2].trim();
   }
@@ -189,7 +191,10 @@ function buildKrant({ regime, perSupplier, nFresh }) {
   );
 
   const supplierLine = Object.entries(perSupplier)
-    .map(([k, v]) => `${k.replace('.md', '')}:${v.fresh ? v.score : 'N/A'}`)
+    .map(([k, v]) => {
+      const score = (v && v.fresh && v.score != null) ? v.score : 'N/A';
+      return `${k.replace('.md', '')}:${score}`;
+    })
     .join(' | ');
   const bewijs = cap(`Suppliers: ${supplierLine}.`, CAP_BEWIJS);
 
@@ -239,9 +244,10 @@ function buildMarkdown({
     `n_fresh: ${nFresh}`,
     `n_suppliers: ${SUPPLIERS.length}`,
     `aggregate_score: ${totalScore}`,
-    ...Object.entries(perSupplier).map(([k, v]) =>
-      `${k.replace('.md', '').replace('-', '_')}_score: ${v.fresh ? v.score : 'NA'}`
-    ),
+    ...Object.entries(perSupplier).map(([k, v]) => {
+      const score = (v && v.fresh && v.score != null) ? v.score : 'NA';
+      return `${k.replace('.md', '').replace('-', '_')}_score: ${score}`;
+    }),
     '---',
     '',
     '# Confluence',
@@ -252,9 +258,13 @@ function buildMarkdown({
     '',
     '| Supplier | Regime | Score | Fresh | Last Successful |',
     '|----------|--------|-------|-------|------------------|',
-    ...Object.entries(perSupplier).map(([k, v]) =>
-      `| ${k.replace('.md', '')} | ${v.regime || '—'} | ${v.fresh ? v.score : 'N/A'} | ${v.fresh ? '✓' : '✗ STALE'} | ${v.last || '—'} |`
-    ),
+    ...Object.entries(perSupplier).map(([k, v]) => {
+      const regime = (v && v.regime) || '—';
+      const score = (v && v.fresh && v.score != null) ? v.score : 'N/A';
+      const fresh = v && v.fresh ? '✓' : '✗ STALE';
+      const last = (v && v.last) || '—';
+      return `| ${k.replace('.md', '')} | ${regime} | ${score} | ${fresh} | ${last} |`;
+    }),
     '',
     '## Krant',
     '',
@@ -274,9 +284,7 @@ function buildMarkdown({
   ].filter(l => l !== '').join('\n');
 }
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
-
+async function runConfluence(req) {
   const lastAttemptedAt = new Date().toISOString();
 
   let cycleCount = 1;
@@ -299,6 +307,10 @@ export default async function handler(req, res) {
   };
 
   const supplierMd = await Promise.all(SUPPLIERS.map(p => safe(p, fetchWikiFile(p))));
+  // Vang 404's expliciet — fetchWikiFile geeft null terug, leg dat vast in errors zodat de oorzaak zichtbaar is.
+  for (let i = 0; i < SUPPLIERS.length; i++) {
+    if (supplierMd[i] == null) errors.push(`${SUPPLIERS[i]}:404_or_empty`);
+  }
   const scoreFns = { 'sensors/market.md': scoreMarket, 'sensors/macro-regime.md': scoreMacro, 'sensors/watchlist.md': scoreWatchlist, 'sensors/liquidity-tide.md': scoreLiquidityTide };
 
   const perSupplier = {};
@@ -308,7 +320,12 @@ export default async function handler(req, res) {
     const md = supplierMd[i];
     const fm = parseFrontmatter(md);
     const fresh = isFresh(fm);
-    const s = (md && fresh) ? scoreFns[path](fm) : null;
+    let s = null;
+    try {
+      s = (md && fresh) ? scoreFns[path](fm) : null;
+    } catch (e) {
+      errors.push(`score:${path}:${e.message}`);
+    }
     perSupplier[path.replace('sensors/', '')] = {
       regime: fm.regime || null,
       score: s,
@@ -330,9 +347,24 @@ export default async function handler(req, res) {
 
   const written = await writeToWiki(md, prevSha).catch(() => false);
 
-  return res.status(200).json({
+  return {
     regime: cls.regime, cycleCount, written, errors,
     snapshot: { perSupplier, nFresh, totalScore, detail: cls.detail },
     trigger: req.body?.trigger || 'manual',
-  });
+  };
+}
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+  try {
+    const result = await runConfluence(req);
+    return res.status(200).json(result);
+  } catch (e) {
+    // Top-level vangnet: voorkom opaque FUNCTION_INVOCATION_FAILED — toon stack in response.
+    return res.status(500).json({
+      error: 'confluence_runner_crash',
+      message: e && e.message,
+      stack: e && e.stack,
+    });
+  }
 }
