@@ -90,9 +90,31 @@ async function fetchOpenInvoices(cronSecret) {
 async function fetchOpenTasks(cronSecret) {
   const data = await ctrlSkill('list_tasks', { limit: 100 }, cronSecret);
   const tasks = data?.result?.tasks || [];
-  const open = tasks.filter(t => t.status === 'open').length;
-  const urgent = tasks.filter(t => t.status === 'open' && t.priority === 'urgent').length;
-  return { open, urgent };
+  const openTasks = tasks.filter(t => t.status === 'open');
+  const open = openTasks.length;
+  const urgent = openTasks.filter(t => t.priority === 'urgent').length;
+
+  // Top-N voor weergave: sorteer op signalStrength desc, dan createdAt desc.
+  const TASKS_DISPLAY_LIMIT = 15;
+  const list = [...openTasks]
+    .sort((a, b) => {
+      const sa = a.signalStrength ?? 0;
+      const sb = b.signalStrength ?? 0;
+      if (sb !== sa) return sb - sa;
+      const ca = a.createdAt ? Date.parse(a.createdAt) : 0;
+      const cb = b.createdAt ? Date.parse(b.createdAt) : 0;
+      return cb - ca;
+    })
+    .slice(0, TASKS_DISPLAY_LIMIT)
+    .map(t => ({
+      contact: t.contact?.name?.trim() || '—',
+      company: (t.contact?.company || t.contact?.domain || '').trim() || '—',
+      type: t.type || '—',
+      priority: t.priority || '—',
+      trigger: t.trigger || null,
+    }));
+
+  return { open, urgent, list };
 }
 
 async function fetchEngagedCount(cronSecret) {
@@ -270,6 +292,7 @@ function buildMarkdown({
     `**Les:** ${krant.les}`,
     `**Actie:** ${krant.actie}`,
     '',
+    buildTakenSection(tasks),
     '## Methodologie',
     '',
     `Bronnen: ctrl-engine API op ${CTRL_URL}. Endpoints: GET /api/v1/enrichment/status (per-org pipeline counts), POST /api/v1/skill action=list_invoices + list_tasks + list. Auth: Bearer CRON_SECRET + X-Org-Id ${SKYLD_ORG_ID}. Cadence dagelijks 07:00Z.`,
@@ -281,6 +304,32 @@ function buildMarkdown({
 function pct(n, d) {
   if (!d) return '0';
   return ((n / d) * 100).toFixed(1);
+}
+
+function ucFirst(s) {
+  if (!s) return '';
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+const TRIGGER_LABELS = {
+  CHURN: 'Churn risico',
+};
+
+function triggerLabel(t) {
+  if (!t) return '';
+  return TRIGGER_LABELS[t] || ucFirst(t.toLowerCase());
+}
+
+function mdEscape(s) {
+  return String(s ?? '').replace(/\|/g, '\\|').replace(/\n/g, ' ').trim();
+}
+
+function buildTakenSection(tasks) {
+  const list = tasks?.list || [];
+  if (!list.length) return '';
+  const header = '| Contact | Bedrijf | Type | Prioriteit | Trigger |\n|---------|---------|------|-----------|---------|';
+  const rows = list.map(t => `| ${mdEscape(t.contact)} | ${mdEscape(t.company)} | ${mdEscape(ucFirst(t.type))} | ${mdEscape(ucFirst(t.priority))} | ${mdEscape(triggerLabel(t.trigger))} |`);
+  return ['', '## Taken', '', header, ...rows].join('\n');
 }
 
 // ── Main handler ────────────────────────────────────────────

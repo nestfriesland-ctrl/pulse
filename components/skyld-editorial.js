@@ -211,7 +211,56 @@
     `;
   }
 
-  function sidebarHtml(fm) {
+  // Parse ## Taken markdown-tabel uit de body. Sensor schrijft kolommen
+  // Contact | Bedrijf | Type | Prioriteit | Trigger. Onbekende kolomvolgorde
+  // is hier niet gepland — sensor is autoritatief over het schema.
+  function parseTakenSection(body) {
+    if (!body) return [];
+    const m = body.match(/##\s+Taken\s*\n([\s\S]*?)(?:\n##\s|$)/);
+    if (!m) return [];
+    const block = m[1];
+    const rows = [];
+    for (const line of block.split('\n')) {
+      const t = line.trim();
+      if (!t.startsWith('|')) continue;
+      const cells = t.split('|').slice(1, -1).map(c => c.trim());
+      if (cells.length < 4) continue;
+      // Skip header en separator-regels.
+      if (/^contact$/i.test(cells[0])) continue;
+      if (/^[-:\s]+$/.test(cells[0])) continue;
+      rows.push({
+        contact: cells[0],
+        company: cells[1],
+        type: cells[2],
+        priority: cells[3],
+        trigger: cells[4] || '',
+      });
+    }
+    return rows;
+  }
+
+  function takenSectionHtml(taken) {
+    if (!taken.length) return '';
+    const u = U();
+    const items = taken.map(t => {
+      const meta = [t.company, t.type, t.trigger].filter(Boolean).join(' · ');
+      return `
+        <div class="skyld-taak">
+          <span class="krant-caption skyld-taak-naam">${u.escape(t.contact)}</span>
+          <span class="krant-meta">${u.escape(meta)}</span>
+        </div>
+      `;
+    }).join('');
+    return `
+      <section class="skyld-side-section">
+        <h2 class="krant-h2">Taken</h2>
+        <hr class="krant-rule-light">
+        <div class="skyld-taken-lijst">${items}</div>
+      </section>
+    `;
+  }
+
+  function sidebarHtml(fm, body) {
     const open = toInt(fm.invoices_open);
     const overdue = toInt(fm.invoices_overdue);
     const tasksOpen = toInt(fm.tasks_open);
@@ -221,11 +270,15 @@
     if (open != null) facturenLines.push({ label: 'open', num: fmtNum(open) });
     if (overdue != null && overdue > 0) facturenLines.push({ label: 'overdue', num: fmtNum(overdue), neg: true });
 
-    const takenLines = [];
-    if (tasksOpen != null) takenLines.push({ label: 'open', num: fmtNum(tasksOpen) });
-    if (urgent != null && urgent > 0) takenLines.push({ label: 'urgent', num: fmtNum(urgent), neg: true });
+    const taken = parseTakenSection(body);
+    const takenHtml = taken.length
+      ? takenSectionHtml(taken)
+      : sidebarSection('Taken', [
+          ...(tasksOpen != null ? [{ label: 'open', num: fmtNum(tasksOpen) }] : []),
+          ...(urgent != null && urgent > 0 ? [{ label: 'urgent', num: fmtNum(urgent), neg: true }] : []),
+        ]);
 
-    return sidebarSection('Facturen', facturenLines) + sidebarSection('Taken', takenLines);
+    return sidebarSection('Facturen', facturenLines) + takenHtml;
   }
 
   // --- root render ------------------------------------------------------
@@ -234,6 +287,7 @@
     if (!container) return;
     const u = U();
     const fm = (parseFrontmatter && parseFrontmatter(content)) || {};
+    const body = (content || '').replace(/^---[\s\S]*?\n---\s*\n?/, '');
 
     const today = new Date();
     const datum = today.toLocaleDateString('nl-NL', {
@@ -262,7 +316,7 @@
           </article>
 
           <aside class="skyld-sidebar">
-            ${sidebarHtml(fm)}
+            ${sidebarHtml(fm, body)}
           </aside>
         </div>
 

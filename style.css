@@ -1778,6 +1778,23 @@ body {
 .skyld-side-line.is-neg .skyld-side-label,
 .skyld-side-line.is-neg .skyld-side-num { color: var(--krant-accent-neg); }
 
+/* Taken-lijst — per taak: contactnaam (caption-serif, bold) boven
+   bedrijf · type · trigger (mono meta). Geen checkboxes, geen rijborder. */
+.skyld-taken-lijst {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+.skyld-taak {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.skyld-taak-naam {
+  font-weight: 700;
+  color: var(--krant-ink);
+}
+
 /* Footer — link naar ctrl-engine. */
 .skyld-footer { margin-top: 3rem; }
 
