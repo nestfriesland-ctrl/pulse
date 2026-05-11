@@ -155,6 +155,51 @@ function extractStellingShort(md) {
   return text.length > 180 ? text.slice(0, 177) + '…' : text;
 }
 
+// Anti-fragile bijdrage — drie-traps logic op basis van hyblock-frontmatter
+// (open_paper_trades) en anti-fragile.md verdicts (recente REFUTED).
+// Regels per D21:
+//   open_paper_trades >= 1  → "ACTIEF: {asset} {LONG/SHORT}. Falsificatie bij {trigger}."
+//   open_paper_trades == 0  + recent refuted → "Geen open trade. Laatst geleerd: axioma #{X} REFUTED."
+//   open_paper_trades == 0  + geen recent  → null (geen bijdrage)
+function antiFragileContribution({ antiFragileMd, hyblockMd }) {
+  if (!hyblockMd && !antiFragileMd) return null;
+  const hbFm = hyblockMd ? parseFrontmatter(hyblockMd) : {};
+  const open = parseInt(hbFm.open_paper_trades || '0', 10) || 0;
+
+  if (open >= 1 && hyblockMd) {
+    // Parse eerste open-paper-trade regel uit "## Open paper trades".
+    const sec = hyblockMd.match(/##\s*Open paper trades\s*\n([\s\S]*?)(?=\n##|\n#|$)/i);
+    if (sec) {
+      const firstLine = sec[1].split('\n').map(l => l.trim()).find(l => l.startsWith('-'));
+      if (firstLine) {
+        const head = firstLine.match(/\*\*\s*(T-\d+)?\s*([A-Z]{2,6})\s+(LONG|SHORT)[^*]*\*\*/);
+        const asset = head ? head[2] : '?';
+        const dir = head ? head[3] : '?';
+        const slM = firstLine.match(/SL\s+\$?([\d.,]+)/i);
+        const trigger = slM ? `SL ${asset} ${dir === 'LONG' ? '≤' : '≥'} $${slM[1]}` : 'SL-cross';
+        return `ACTIEF: ${asset} ${dir}. Falsificatie bij ${trigger}.`;
+      }
+    }
+    return `ACTIEF: ${open} open paper-trade${open === 1 ? '' : 's'}. Falsificatie-conditie in cyclus-digest.`;
+  }
+
+  if (antiFragileMd) {
+    const sec = antiFragileMd.match(/##\s*Axiom verdicts[^\n]*\n([\s\S]*?)(?=\n##|\n#|$)/i);
+    if (sec) {
+      const lines = sec[1].split('\n').map(l => l.trim()).filter(l => l.startsWith('-'));
+      // Loop achterstevoren — meest recente refuted eerst.
+      for (let i = lines.length - 1; i >= 0; i--) {
+        const hdr = lines[i].match(/^-\s*\*\*\s*#(\d+)\s+([^*]+?)\s*\*\*/);
+        if (!hdr) continue;
+        if (/(REFUTED|REFUTING)/.test(hdr[2])) {
+          return `Geen open trade. Laatst geleerd: axioma #${hdr[1]} REFUTED.`;
+        }
+      }
+    }
+  }
+  return null;
+}
+
 function isFresh(fm) {
   const ts = fm.last_successful_at || fm.last_attempted_at || fm.last_updated;
   if (!ts || ts === 'never' || ts === '—') return false;
@@ -381,7 +426,16 @@ async function runMachinekamer(req) {
     return res200({ regime: 'UNKNOWN', cycleCount, errors });
   }
   const activeNames = parseRegistryForActiveLive(registryFile.content)
-    .filter(n => n.toLowerCase() !== 'machinekamer'); // sluit zichzelf uit
+    .filter(n => n.toLowerCase() !== 'machinekamer') // sluit zichzelf uit
+    // Anti-fragile is één leverancier: anti-fragile-sensor is de geaggregeerde
+    // entry, hyblock-research-cycle wordt als data-bron binnen die entry
+    // verwerkt (zie antiFragileContribution). Apart tellen verdubbelt de
+    // bijdrage in het scorebord.
+    .filter(n => n.toLowerCase() !== 'hyblock-research-cycle');
+
+  // Anti-fragile bundle: één keer ophalen, beschikbaar voor de speciale
+  // bijdrage-extractor in de Promise.all hieronder.
+  const hyblockFile = await fetchWikiFile('sensors/hyblock-research-cycle.md').catch(() => null);
 
   // Load all sensor markdowns
   const sensorBlobs = await Promise.all(activeNames.map(async (name) => {
@@ -390,12 +444,23 @@ async function runMachinekamer(req) {
       if (!f) return { name, missing: true, fresh: false };
       const fm = parseFrontmatter(f.content);
       const fresh = isFresh(fm);
+      let stelling;
+      if (/anti-fragile/i.test(name)) {
+        // Speciale bijdrage-logica per D21: open-trade-actief, refuted-recent,
+        // of geen bijdrage. Valt terug op generieke extractor als null.
+        stelling = antiFragileContribution({
+          antiFragileMd: f.content,
+          hyblockMd: hyblockFile ? hyblockFile.content : null,
+        }) || extractStellingShort(f.content);
+      } else {
+        stelling = extractStellingShort(f.content);
+      }
       return {
         name,
         missing: false,
         fresh,
         regime: fm.regime || null,
-        stelling: extractStellingShort(f.content),
+        stelling,
         freshLabel: freshnessLabel(fm),
       };
     } catch (e) {
