@@ -19,7 +19,7 @@ const TENANT_CONFIG = {
   'mathijs.puls.frl': {
     name: 'mathijs',
     // Whitelist expliciet — SKYLD katern is tara-only en mag niet in mathijs-nav.
-    katernen: ['dashboard', 'markt', 'machinekamer', 'lichaam', 'residu', 'necrologie', 'nemesis', 'discrepanties'],
+    katernen: ['dashboard', 'markt', 'machinekamer', 'lichaam', 'residu', 'necrologie', 'nemesis', 'discrepanties', 'anti-fragile'],
     accent: null,
   },
   'tara.puls.frl': {
@@ -1112,6 +1112,14 @@ function handleRoute() {
     recordView('discrepanties');
     return;
   }
+  if (hash === 'anti-fragile') {
+    document.getElementById('anti-fragile-view').classList.add('active');
+    const link = document.querySelector('[data-view="anti-fragile"]');
+    if (link) link.classList.add('active');
+    renderAntiFragile();
+    recordView('anti-fragile');
+    return;
+  }
   if (hash.startsWith('doc/')) {
     document.getElementById('document-view').classList.add('active');
     renderDocument(hash.slice(4));
@@ -1392,6 +1400,7 @@ async function init() {
     registry = null;
     _lichaamCache = null;
     _nemesisCache = null;
+    _antiFragileCache = null;
     try {
       await fetchTree();
       if (renderMathijsDashboard) {
@@ -1406,6 +1415,9 @@ async function init() {
       }
       if (document.getElementById('discrepanties-view').classList.contains('active')) {
         renderDiscrepanties();
+      }
+      if (document.getElementById('anti-fragile-view').classList.contains('active')) {
+        renderAntiFragile();
       }
     } catch (e) { /* silent refresh failure */ }
   }, 300000);
@@ -1573,6 +1585,37 @@ function renderDiscrepantieCard(item, category) {
     `<p class="dk-detail">${detail}</p>` +
     `<div class="dk-actions">${buttons}</div>` +
     `</article>`;
+}
+
+// ─── Anti-fragile katern ──────────────────────────────────────────────
+// Bron: wiki/sensors/anti-fragile.md + wiki/sensors/hyblock-research-cycle.md.
+// Beide files zijn los-gekoppelde inputs — een ontbrekende file faalt niet
+// de katern, alleen de bijbehorende secties leveren een empty-state.
+
+let _antiFragileCache = null;
+
+async function fetchAntiFragileData() {
+  if (_antiFragileCache) return _antiFragileCache;
+  if (!window.PulseAntiFragileKatern) return null;
+  let antiFragileContent = null;
+  let hyblockContent = null;
+  try { antiFragileContent = await fetchFile('sensors/anti-fragile.md'); } catch (e) { /* optional */ }
+  try { hyblockContent = await fetchFile('sensors/hyblock-research-cycle.md'); } catch (e) { /* optional */ }
+  if (!antiFragileContent && !hyblockContent) return null;
+  _antiFragileCache = window.PulseAntiFragileKatern.parse({ antiFragileContent, hyblockContent });
+  return _antiFragileCache;
+}
+
+async function renderAntiFragile() {
+  const container = document.getElementById('anti-fragile-content');
+  if (!container || !window.PulseAntiFragileKatern) return;
+  container.innerHTML = '<section class="lead"><div class="loading">Anti-fragile katern laadt…</div></section>';
+  const data = await fetchAntiFragileData();
+  if (!data) {
+    container.innerHTML = '<section class="lead"><div class="loading">Anti-fragile bronnen niet beschikbaar.</div></section>';
+    return;
+  }
+  window.PulseAntiFragileKatern.render({ container, data });
 }
 
 async function renderDiscrepanties() {

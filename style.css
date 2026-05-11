@@ -1415,3 +1415,22 @@ footer.editorial {
 .dk-empty h1 { color: var(--dk-accent); font-family: 'Fraunces', serif; font-weight: 900; }
 .ph-stat.discrepancies[data-jump] { cursor: pointer; }
 .ph-stat.discrepancies[data-jump]:hover { text-decoration: underline; }
+
+/* ── Anti-fragile katern ──────────────────────────────────────────────
+   Hergebruikt dk-* basis (mosterd-bruin accent). Toevoegingen: tabel
+   voor axioma-staat, meta-grid voor twee-sensor frontmatter, status-
+   kleur-codering voor PROVEN/REFUTED/UNKNOWN. */
+.af-katern .dk-bucket h2 { font-size: 12px; }
+.af-table { width: 100%; border-collapse: collapse; font-family: 'IBM Plex Mono', monospace; font-size: 12px; margin-top: 4px; }
+.af-table th { text-align: left; border-bottom: 1px solid var(--dk-accent); padding: 6px 8px; color: var(--dk-accent); font-weight: 600; letter-spacing: 0.04em; }
+.af-table td { border-bottom: 1px solid var(--paper-rule); padding: 6px 8px; vertical-align: top; }
+.af-status { font-weight: 600; letter-spacing: 0.06em; }
+.af-status-proven   { color: var(--ink); }
+.af-status-refuted  { color: #8a3a2a; }
+.af-status-unknown  { color: var(--ink-mute); }
+.af-rows, .af-meta-grid { display: grid; gap: 6px; }
+.af-row, .af-meta-row { display: grid; grid-template-columns: 140px 1fr; gap: 12px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
+.af-label { color: var(--ink-mute); text-transform: uppercase; letter-spacing: 0.06em; font-size: 11px; }
+.af-meta-grid { grid-template-columns: 1fr 1fr; gap: 24px; }
+.af-meta-col h3 { font-family: 'IBM Plex Sans Condensed', sans-serif; font-size: 12px; font-weight: 600; color: var(--dk-accent); text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 8px; }
+.af-empty { background: var(--paper); border-style: dashed; border-color: var(--dk-accent); }
