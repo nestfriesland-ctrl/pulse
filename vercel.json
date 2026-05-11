@@ -12,14 +12,6 @@
   ],
   "crons": [
     {
-      "path": "/api/cron/liquidity-tide",
-      "schedule": "0 */4 * * *"
-    },
-    {
-      "path": "/api/cron/liquidity-sweep-poll",
-      "schedule": "*/15 * * * *"
-    },
-    {
       "path": "/api/cron/macro-regime",
       "schedule": "0 */6 * * *"
     },
