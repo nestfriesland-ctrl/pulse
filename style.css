@@ -1339,3 +1339,37 @@ footer.editorial {
 .lichaam-predictions .kicker:not(.bull):not(.bear),
 .lichaam-falsifier .kicker:not(.bull):not(.bear),
 .lichaam-falsifier-detail .kicker:not(.bull):not(.bear) { color: #5c3a1f; }
+
+/* Drift alarmstrook */
+.alarm-kritiek {
+  background: #7a2a2a;
+  color: #fff;
+  padding: 6px 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.alarm-degraded {
+  background: #a8862c;
+  color: #fff;
+  padding: 6px 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.al-prefix { font-weight: 600; margin-right: 4px; }
+.al-chip {
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 3px;
+  text-decoration: none;
+  font-size: 10px;
+}
+.al-chip:hover { background: rgba(255,255,255,0.3); }

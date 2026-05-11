@@ -1268,6 +1268,7 @@ async function init() {
   startLiveLoop();
 
   renderPipelineHealth();
+  renderDriftAlarmstrook();
 
   // Wiki content refresh every 5 minutes — re-renders editorial + re-paints
   // live values into the freshly-rendered DOM.
@@ -1284,6 +1285,7 @@ async function init() {
         injectLivePrices();
       }
       renderPipelineHealth();
+      renderDriftAlarmstrook();
     } catch (e) { /* silent refresh failure */ }
   }, 300000);
 }
@@ -1326,6 +1328,88 @@ async function renderPipelineHealth() {
     }
   } catch (e) {
     el.textContent = 'pipeline n/a';
+  }
+}
+
+// ─── Drift alarmstrook ────────────────────────────────────────────────
+const SENSOR_KATERN = {
+  'market-sensor': '#markt',
+  'watchlist-sensor': '#markt',
+  'confluence-monitor': '#markt',
+  'liquidity-tide': '#markt',
+  'macro-regime-sensor': '#markt',
+  'cortex': '#lichaam',
+  'brier': '#lichaam',
+  'machinekamer': '#machinekamer',
+  'morning-paper': '#machinekamer',
+  'memory-sync': '#machinekamer',
+  'nest-seo-sensor': '#dashboard',
+  'observer-residue': '#residu',
+  'enrichment-sensor': '#dashboard',
+  'infra-sensor': '#dashboard',
+  'fear-greed-sensor': '#markt',
+  'anti-fragile-sensor': '#dashboard',
+  'hyblock-research-cycle': '#markt',
+};
+
+async function renderDriftAlarmstrook() {
+  const el = document.getElementById('drift-alarmstrook');
+  if (!el) return;
+  try {
+    const content = await fetchFile('sensors/drift.md');
+    const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+    if (!fmMatch) { el.innerHTML = ''; return; }
+    const fm = {};
+    for (const line of fmMatch[1].split('\n')) {
+      const m = line.match(/^([a-z_0-9]+):\s*(.+)$/i);
+      if (m) fm[m[1]] = m[2].trim();
+    }
+    const health = fm.pipeline_health || 'UNKNOWN';
+    if (health !== 'KRITIEK') {
+      el.innerHTML = '';
+      return;
+    }
+
+    // Parse scorebord-tabel: regels die beginnen met "| <naam> |" en eindigen op "| DOOD |"
+    const dood = [];
+    const lines = content.split('\n');
+    let inTable = false;
+    let headerCols = null;
+    for (const raw of lines) {
+      const line = raw.trim();
+      if (line.startsWith('| Sensor ') || line.startsWith('|Sensor')) {
+        inTable = true;
+        headerCols = line.split('|').map((s) => s.trim()).filter(Boolean);
+        continue;
+      }
+      if (inTable && /^\|\s*[-: ]+\|/.test(line)) continue; // separator
+      if (inTable) {
+        if (!line.startsWith('|')) { inTable = false; headerCols = null; continue; }
+        const cols = line.split('|').map((s) => s.trim());
+        // cols has leading empty from leading |; drop it
+        if (cols[0] === '') cols.shift();
+        if (cols[cols.length - 1] === '') cols.pop();
+        const oordeel = cols[cols.length - 1];
+        if (oordeel === 'DOOD') {
+          const name = cols[0];
+          if (name) dood.push(name);
+        }
+      }
+    }
+
+    if (dood.length === 0) { el.innerHTML = ''; return; }
+
+    const chips = dood.map((name) => {
+      const href = SENSOR_KATERN[name] || '#dashboard';
+      return `<a class="al-chip" href="${href}">${name}</a>`;
+    }).join('');
+    el.innerHTML =
+      `<div class="alarm-kritiek">` +
+      `<span class="al-prefix">DRIFT KRITIEK — ${dood.length} DOOD:</span>` +
+      chips +
+      `</div>`;
+  } catch (e) {
+    el.innerHTML = '';
   }
 }
 
