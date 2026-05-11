@@ -1386,3 +1386,6 @@ footer.editorial {
 .tenant-tara .kicker.neut { color: var(--tenant-accent); }
 .tenant-tara .katern-header h1 { color: var(--tenant-accent); }
 .tenant-tara .back-link { color: var(--tenant-accent); }
+
+/* Tara heeft alleen één katern (SKYLD); back-naar-dashboard heeft geen doel. */
+.tenant-tara .back-link { display: none; }

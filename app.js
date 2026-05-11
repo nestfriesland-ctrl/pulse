@@ -1071,6 +1071,23 @@ function handleRoute() {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.nav-links a').forEach(a => a.classList.remove('active'));
 
+  // Tenant-override: tenants zonder 'dashboard' in hun katernen-whitelist
+  // (zoals tara.puls.frl) krijgen op #dashboard hun primaire katern te zien
+  // in plaats van de mathijs-dashboard. URL blijft #dashboard zodat directe
+  // links vanuit oude bookmarks ook werken.
+  const tenant = getTenant();
+  if (hash === 'dashboard' && tenant.katernen && !tenant.katernen.includes('dashboard')) {
+    const primary = tenant.katernen[0];
+    if (primary && KATERN_DEFS[primary]) {
+      document.getElementById('katern-view').classList.add('active');
+      const link = document.querySelector(`[data-view="${primary}"]`);
+      if (link) link.classList.add('active');
+      renderKatern(primary);
+      recordView(primary);
+      return;
+    }
+  }
+
   if (hash === 'dashboard') {
     document.getElementById('dashboard-view').classList.add('active');
     const link = document.querySelector('[data-view="dashboard"]');
@@ -1311,13 +1328,9 @@ function applyTenant() {
       if (!allowed.has(view)) a.style.display = 'none';
     });
 
-    // Default-route voor tenants zonder dashboard: redirect naar eerste katern.
-    if (!allowed.has('dashboard')) {
-      const current = (window.location.hash || '').slice(1) || 'dashboard';
-      if (current === 'dashboard' || current === '') {
-        window.location.hash = `#${tenant.katernen[0]}`;
-      }
-    }
+    // Tenants zonder 'dashboard' in hun whitelist krijgen via handleRoute()
+    // op #dashboard hun primaire katern gerendered — geen hash-redirect,
+    // URL blijft consistent met wat de gebruiker intypte.
   }
 }
 
@@ -1329,15 +1342,22 @@ async function init() {
   }
   if (window.PulseObserver) window.PulseObserver.start();
 
+  // Tenants zonder eigen dashboard-render slaan de Mathijs-dashboard
+  // (lead/triple/duo/strip + pipeline-health + drift-alarmstrook + nemesis/
+  // lichaam voorpaginas) over — die hangen aan sensors die voor tara niet
+  // bestaan en zouden alleen ruis genereren.
+  const tenant = getTenant();
+  const renderMathijsDashboard = !tenant.katernen || tenant.katernen.includes('dashboard');
+
   try {
     await fetchTree();
-    await renderDashboard();
-    // NEMESIS-redactie: render voorpagina-tile (best-effort, geen fail).
-    try { await renderNemesisVoorpagina(); }
-    catch (err) { console.warn('[nemesis] voorpagina render failed', err); }
-    // Lichaam-redactie: render voorpagina-tile (best-effort, geen fail).
-    try { await renderLichaamVoorpagina(); }
-    catch (err) { console.warn('[lichaam] voorpagina render failed', err); }
+    if (renderMathijsDashboard) {
+      await renderDashboard();
+      try { await renderNemesisVoorpagina(); }
+      catch (err) { console.warn('[nemesis] voorpagina render failed', err); }
+      try { await renderLichaamVoorpagina(); }
+      catch (err) { console.warn('[lichaam] voorpagina render failed', err); }
+    }
     handleRoute();
   } catch (e) {
     const editorial = document.getElementById('editorial');
@@ -1349,11 +1369,14 @@ async function init() {
 
   startLiveLoop();
 
-  renderPipelineHealth();
-  renderDriftAlarmstrook();
+  if (renderMathijsDashboard) {
+    renderPipelineHealth();
+    renderDriftAlarmstrook();
+  }
 
   // Wiki content refresh every 5 minutes — re-renders editorial + re-paints
-  // live values into the freshly-rendered DOM.
+  // live values into the freshly-rendered DOM. Tenants zonder Mathijs-
+  // dashboard re-renderen alleen hun actieve katern via handleRoute().
   setInterval(async () => {
     cache = {};
     tree = null;
@@ -1362,12 +1385,16 @@ async function init() {
     _nemesisCache = null;
     try {
       await fetchTree();
-      if (document.getElementById('dashboard-view').classList.contains('active')) {
-        await renderDashboard();
-        injectLivePrices();
+      if (renderMathijsDashboard) {
+        if (document.getElementById('dashboard-view').classList.contains('active')) {
+          await renderDashboard();
+          injectLivePrices();
+        }
+        renderPipelineHealth();
+        renderDriftAlarmstrook();
+      } else if (document.getElementById('katern-view').classList.contains('active')) {
+        handleRoute();
       }
-      renderPipelineHealth();
-      renderDriftAlarmstrook();
     } catch (e) { /* silent refresh failure */ }
   }, 300000);
 }
