@@ -287,7 +287,7 @@
     if (!container) return;
     const u = U();
     const fm = (parseFrontmatter && parseFrontmatter(content)) || {};
-    const body = (content || '').replace(/^---[\s\S]*?\n---\s*\n?/, '');
+    const bodyMd = (content || '').replace(/^---[\s\S]*?\n---\s*\n?/, '');
 
     const today = new Date();
     const datum = today.toLocaleDateString('nl-NL', {
@@ -316,7 +316,7 @@
           </article>
 
           <aside class="skyld-sidebar">
-            ${sidebarHtml(fm, body)}
+            ${sidebarHtml(fm, bodyMd)}
           </aside>
         </div>
 
