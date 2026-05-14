@@ -52,6 +52,18 @@
     }
     #pulse-auth-gate input:focus { border-color: #A87B2E; }
     #pulse-auth-gate input::placeholder { color: #8a8270; letter-spacing: 0.3em; }
+    #pulse-auth-gate .pulse-auth-hint {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      color: #5C564E;
+      letter-spacing: 0.1em;
+      margin-top: -16px;
+    }
+    #pulse-auth-gate form {
+      display: flex; flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
     #pulse-auth-gate.pulse-auth-error input {
       border-color: #9b3a2f;
       animation: pulse-auth-shake 280ms ease;
@@ -69,15 +81,19 @@
   <div id="pulse-auth-gate" role="dialog" aria-modal="true" aria-label="PULSE access">
     <div class="pulse-auth-nameplate" id="pulse-auth-nameplate">PULSE</div>
     <div class="pulse-auth-rule"></div>
-    <input
-      type="password"
-      id="pulse-auth-input"
-      placeholder="···"
-      autocomplete="off"
-      autocapitalize="off"
-      spellcheck="false"
-      inputmode="numeric"
-    />
+    <form id="pulse-auth-form" novalidate>
+      <input
+        type="password"
+        id="pulse-auth-input"
+        placeholder="···"
+        autocomplete="off"
+        autocapitalize="off"
+        spellcheck="false"
+        inputmode="numeric"
+        pattern="[0-9]*"
+      />
+      <div class="pulse-auth-hint">enter om door te gaan →</div>
+    </form>
   </div>
   <script>
     (function () {
@@ -136,11 +152,21 @@
         }, 320);
       }
 
+      function attempt() {
+        if (input.value === expected) unlock();
+        else reject();
+      }
+
+      var form = document.getElementById('pulse-auth-form');
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        attempt();
+      });
+
       input.addEventListener('keydown', function (e) {
         if (e.key !== 'Enter') return;
         e.preventDefault();
-        if (input.value === expected) unlock();
-        else reject();
+        attempt();
       });
     })();
   </script>
