@@ -52,13 +52,22 @@
     }
     #pulse-auth-gate input:focus { border-color: #A87B2E; }
     #pulse-auth-gate input::placeholder { color: #8a8270; letter-spacing: 0.3em; }
-    #pulse-auth-gate .pulse-auth-hint {
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 10px;
-      color: #5C564E;
-      letter-spacing: 0.1em;
-      margin-top: -16px;
+    #pulse-auth-gate .pulse-auth-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
+    #pulse-auth-gate .pulse-auth-submit {
+      border: none;
+      background: transparent;
+      font-size: 24px;
+      color: #A87B2E;
+      cursor: pointer;
+      padding: 0 6px;
+      line-height: 1;
+      font-family: inherit;
+    }
+    #pulse-auth-gate .pulse-auth-submit:focus { outline: none; }
     #pulse-auth-gate form {
       display: flex; flex-direction: column;
       align-items: center;
@@ -82,17 +91,19 @@
     <div class="pulse-auth-nameplate" id="pulse-auth-nameplate">PULSE</div>
     <div class="pulse-auth-rule"></div>
     <form id="pulse-auth-form" novalidate>
-      <input
-        type="password"
-        id="pulse-auth-input"
-        placeholder="···"
-        autocomplete="off"
-        autocapitalize="off"
-        spellcheck="false"
-        inputmode="numeric"
-        pattern="[0-9]*"
-      />
-      <div class="pulse-auth-hint">enter om door te gaan →</div>
+      <div class="pulse-auth-row">
+        <input
+          type="password"
+          id="pulse-auth-input"
+          placeholder="···"
+          autocomplete="off"
+          autocapitalize="off"
+          spellcheck="false"
+          inputmode="numeric"
+          pattern="[0-9]*"
+        />
+        <button type="submit" class="pulse-auth-submit" aria-label="Doorgaan">→</button>
+      </div>
     </form>
   </div>
   <script>
